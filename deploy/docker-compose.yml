@@ -12,6 +12,7 @@ services:
       TICKGUARD_LOG_LEVEL: info
       TICKGUARD_BINANCE_SYMBOLS: BTCUSDT,ETHUSDT
       TICKGUARD_KRAKEN_SYMBOLS: BTC/USD,ETH/USD
+      TICKGUARD_MERCADOBITCOIN_SYMBOLS: ""   # e.g. BTC-BRL; LEAN needs a custom market (ADR 0006)
     volumes:
       # LEAN bars under /var/lib/tickguard/data, incidents in tickguard.db
       - tickguard-data:/var/lib/tickguard

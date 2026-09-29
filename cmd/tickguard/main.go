@@ -1,6 +1,8 @@
 // Command tickguard collects public crypto trade streams, validates them as they
 // arrive, records every data-quality incident and writes LEAN minute bars.
 //
+// "tickguard audit <path>" instead audits LEAN data already on disk; see audit.go.
+//
 // This file is wiring only: configuration, dependencies, start and shutdown.
 package main
 
@@ -22,6 +24,7 @@ import (
 	"github.com/Amadeus-22/tickguard/internal/adapter/httpapi"
 	"github.com/Amadeus-22/tickguard/internal/adapter/kraken"
 	"github.com/Amadeus-22/tickguard/internal/adapter/leanfs"
+	"github.com/Amadeus-22/tickguard/internal/adapter/mercadobitcoin"
 	"github.com/Amadeus-22/tickguard/internal/adapter/sqlite"
 	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
 	"github.com/Amadeus-22/tickguard/internal/app"
@@ -32,6 +35,12 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "audit" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		code := runAudit(ctx, os.Args[2:], os.Stdout, os.Stderr)
+		stop()
+		os.Exit(code)
+	}
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, "tickguard:", err)
 		os.Exit(1)
@@ -94,7 +103,8 @@ func run() error {
 	})
 
 	log.Info("tickguard started", "http_addr", cfg.HTTPAddr, "data_dir", cfg.DataDir, "db_path", cfg.DBPath,
-		"binance_symbols", strings.Join(cfg.BinanceSymbols, ","), "kraken_symbols", strings.Join(cfg.KrakenSymbols, ","))
+		"binance_symbols", strings.Join(cfg.BinanceSymbols, ","), "kraken_symbols", strings.Join(cfg.KrakenSymbols, ","),
+		"mercadobitcoin_symbols", strings.Join(cfg.MercadoBitcoinSymbols, ","))
 	err = g.Wait()
 	log.Info("tickguard stopped", "error", fmt.Sprint(err))
 	return err
@@ -116,6 +126,16 @@ func buildFeeds(cfg config.Config, log *slog.Logger, m *metrics.Metrics) ([]app.
 		f, err := kraken.New(kraken.Config{
 			URL: cfg.KrakenURL, Symbols: cfg.KrakenSymbols, Conn: wsconn.DefaultConfig(), Logger: log,
 			DecodeErrors: func() { m.DecodeError(domain.ExchangeKraken) },
+		})
+		if err != nil {
+			return nil, err
+		}
+		feeds = append(feeds, f)
+	}
+	if len(cfg.MercadoBitcoinSymbols) > 0 {
+		f, err := mercadobitcoin.New(mercadobitcoin.Config{
+			URL: cfg.MercadoBitcoinURL, Symbols: cfg.MercadoBitcoinSymbols, Conn: wsconn.DefaultConfig(), Logger: log,
+			DecodeErrors: func() { m.DecodeError(domain.ExchangeMercadoBitcoin) },
 		})
 		if err != nil {
 			return nil, err

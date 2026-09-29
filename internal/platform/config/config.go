@@ -24,6 +24,10 @@ type Config struct {
 	BinanceSymbols []string
 	KrakenURL      string
 	KrakenSymbols  []string
+	// MercadoBitcoin is off unless symbols are set: LEAN needs a custom market
+	// to read its output (docs/adr/0006).
+	MercadoBitcoinURL     string
+	MercadoBitcoinSymbols []string
 
 	ClockSkew           time.Duration
 	OutOfOrderTolerance time.Duration
@@ -61,6 +65,9 @@ func Load(lookup Lookup) (Config, error) {
 		KrakenURL:      p.str("TICKGUARD_KRAKEN_URL", "wss://ws.kraken.com/v2"),
 		KrakenSymbols:  p.list("TICKGUARD_KRAKEN_SYMBOLS", "BTC/USD,ETH/USD"),
 
+		MercadoBitcoinURL:     p.str("TICKGUARD_MERCADOBITCOIN_URL", "wss://ws.mercadobitcoin.net/ws"),
+		MercadoBitcoinSymbols: p.list("TICKGUARD_MERCADOBITCOIN_SYMBOLS", ""),
+
 		ClockSkew:           p.duration("TICKGUARD_CLOCK_SKEW", 2*time.Second),
 		OutOfOrderTolerance: p.duration("TICKGUARD_OUT_OF_ORDER_TOLERANCE", 0),
 		StaleAfter:          p.duration("TICKGUARD_STALE_AFTER", 60*time.Second),
@@ -76,8 +83,8 @@ func Load(lookup Lookup) (Config, error) {
 	p.check(c.HTTPAddr != "", "TICKGUARD_HTTP_ADDR must not be empty")
 	p.check(c.DataDir != "", "TICKGUARD_DATA_DIR must not be empty")
 	p.check(c.DBPath != "", "TICKGUARD_DB_PATH must not be empty")
-	p.check(len(c.BinanceSymbols)+len(c.KrakenSymbols) > 0,
-		"at least one of TICKGUARD_BINANCE_SYMBOLS and TICKGUARD_KRAKEN_SYMBOLS must list a symbol")
+	p.check(len(c.BinanceSymbols)+len(c.KrakenSymbols)+len(c.MercadoBitcoinSymbols) > 0,
+		"at least one of TICKGUARD_BINANCE_SYMBOLS, TICKGUARD_KRAKEN_SYMBOLS and TICKGUARD_MERCADOBITCOIN_SYMBOLS must list a symbol")
 	p.check(c.ShutdownTimeout > 0, "TICKGUARD_SHUTDOWN_TIMEOUT must be positive")
 	p.check(c.Buffer > 0, "TICKGUARD_BUFFER must be positive")
 	switch c.LogLevel {

@@ -17,6 +17,16 @@ type Server struct {
 	*httptest.Server
 	// Conns counts accepted connections.
 	Conns atomic.Int32
+
+	header atomic.Pointer[http.Header]
+}
+
+// Header returns the handshake headers of the latest connection, or nil.
+func (s *Server) Header() http.Header {
+	if h := s.header.Load(); h != nil {
+		return *h
+	}
+	return nil
 }
 
 // NewServer starts a server that runs script for every connection; n is the
@@ -26,6 +36,8 @@ func NewServer(t testing.TB, script func(n int, conn *websocket.Conn)) *Server {
 	s := &Server{}
 	up := websocket.Upgrader{}
 	s.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := r.Header.Clone()
+		s.header.Store(&h)
 		conn, err := up.Upgrade(w, r, nil)
 		if err != nil {
 			return // Upgrade already wrote the HTTP error

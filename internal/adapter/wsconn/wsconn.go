@@ -32,6 +32,13 @@ type Config struct {
 	// PingInterval sends a client ping this often; zero disables client pings
 	// (useful when the server pings us, as Binance does).
 	PingInterval time.Duration
+	// AppPing, when set, is sent as a text message every PingInterval instead of
+	// a WebSocket ping frame, for servers that define a ping in their protocol
+	// (Mercado Bitcoin's {"type":"ping"}). The reply is an ordinary message,
+	// which extends the read deadline like any other.
+	AppPing []byte
+	// Header is sent with the handshake (e.g. a User-Agent); nil sends none.
+	Header http.Header
 	// BackoffMin and BackoffMax bound the delay between reconnect attempts.
 	BackoffMin time.Duration
 	BackoffMax time.Duration
@@ -131,7 +138,7 @@ func (c Config) validate(h Handlers) error {
 func session(ctx context.Context, cfg Config, h Handlers) (healthy bool, err error) {
 	dialer := websocket.Dialer{HandshakeTimeout: cfg.DialTimeout, Proxy: http.ProxyFromEnvironment}
 	dialCtx, cancel := context.WithTimeout(ctx, cfg.DialTimeout)
-	conn, resp, err := dialer.DialContext(dialCtx, cfg.URL, nil)
+	conn, resp, err := dialer.DialContext(dialCtx, cfg.URL, cfg.Header)
 	cancel()
 	if resp != nil && resp.Body != nil {
 		resp.Body.Close()
@@ -231,12 +238,24 @@ func keep(ctx context.Context, cfg Config, conn *websocket.Conn, stop <-chan str
 			_ = conn.Close()
 			return
 		case <-tick:
-			if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(cfg.WriteTimeout)); err != nil {
+			if err := ping(cfg, conn); err != nil {
 				_ = conn.Close() // the read loop will report why
 				return
 			}
 		}
 	}
+}
+
+// ping sends a ping frame, or cfg.AppPing as a text message. The keeper is the
+// only writer once the session is subscribed, so the text write does not race.
+func ping(cfg Config, conn *websocket.Conn) error {
+	if cfg.AppPing == nil {
+		return conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(cfg.WriteTimeout))
+	}
+	if err := conn.SetWriteDeadline(time.Now().Add(cfg.WriteTimeout)); err != nil {
+		return err
+	}
+	return conn.WriteMessage(websocket.TextMessage, cfg.AppPing)
 }
 
 // Backoff returns the delay before reconnect attempt n (0-based): exponential

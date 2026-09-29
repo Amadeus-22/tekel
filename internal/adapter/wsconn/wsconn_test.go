@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"net/http"
 	"strings"
 	"sync"
 	"testing"
@@ -191,6 +192,52 @@ func TestRunClientPingsKeepConnectionAlive(t *testing.T) {
 	defer rec.mu.Unlock()
 	if len(rec.downs) != 0 {
 		t.Errorf("connection dropped despite pongs: %v", rec.downs)
+	}
+}
+
+func TestRunAppPingAndHeader(t *testing.T) {
+	pings := make(chan string, 10)
+	srv := wstest.NewServer(t, func(n int, conn *websocket.Conn) {
+		for {
+			_, msg, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+			pings <- string(msg)
+			// the protocol-level reply is what keeps the read deadline alive
+			if err := conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"pong"}`)); err != nil {
+				return
+			}
+		}
+	})
+	cfg := testConfig(srv.URL("/"))
+	cfg.PingInterval = 20 * time.Millisecond
+	cfg.ReadTimeout = 200 * time.Millisecond
+	cfg.AppPing = []byte(`{"type":"ping"}`)
+	cfg.Header = http.Header{"User-Agent": {"tickguard-test"}}
+	rec := newRecorder()
+	h := rec.handlers()
+	h.Subscribe = nil
+	run(t, cfg, h)
+
+	rec.waitFor(t, "up")
+	for i := 0; i < 20; i++ { // ~400ms, twice the read timeout
+		select {
+		case got := <-pings:
+			if got != `{"type":"ping"}` {
+				t.Fatalf("ping = %q", got)
+			}
+		case <-time.After(time.Second):
+			t.Fatal("no application ping received")
+		}
+	}
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	if len(rec.downs) != 0 {
+		t.Errorf("connection dropped despite pong messages: %v", rec.downs)
+	}
+	if ua := srv.Header().Get("User-Agent"); ua != "tickguard-test" {
+		t.Errorf("User-Agent = %q", ua)
 	}
 }
 

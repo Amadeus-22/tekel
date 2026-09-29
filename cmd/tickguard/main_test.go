@@ -53,6 +53,17 @@ func TestBuildFeedsHonoursDisabledExchange(t *testing.T) {
 		t.Errorf("feeds = %v", feeds)
 	}
 
+	cfg.MercadoBitcoinSymbols = []string{"BTC-BRL"}
+	feeds, err = buildFeeds(cfg, slog.Default(), metrics.New())
+	if err != nil || len(feeds) != 2 || feeds[1].Exchange() != "mercadobitcoin" {
+		t.Errorf("feeds with Mercado Bitcoin = %v, %v", feeds, err)
+	}
+	cfg.MercadoBitcoinSymbols = []string{"BRLBTC"}
+	if _, err := buildFeeds(cfg, slog.Default(), metrics.New()); err == nil {
+		t.Error("Mercado Bitcoin symbol in WebSocket spelling accepted")
+	}
+	cfg.MercadoBitcoinSymbols = nil
+
 	cfg.BinanceSymbols = []string{"not valid"}
 	if _, err := buildFeeds(cfg, slog.Default(), metrics.New()); err == nil {
 		t.Error("invalid symbol accepted")

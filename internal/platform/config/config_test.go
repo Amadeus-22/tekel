@@ -96,3 +96,25 @@ func TestFromEnv(t *testing.T) {
 		t.Errorf("FromEnv() = %+v, %v", c.HTTPAddr, err)
 	}
 }
+
+func TestMercadoBitcoin(t *testing.T) {
+	c, err := Load(env(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.MercadoBitcoinSymbols) != 0 || c.MercadoBitcoinURL != "wss://ws.mercadobitcoin.net/ws" {
+		t.Errorf("default = %v %q, want disabled", c.MercadoBitcoinSymbols, c.MercadoBitcoinURL)
+	}
+	// Mercado Bitcoin alone is a valid configuration.
+	c, err = Load(env(map[string]string{
+		"TICKGUARD_BINANCE_SYMBOLS": "", "TICKGUARD_KRAKEN_SYMBOLS": "",
+		"TICKGUARD_MERCADOBITCOIN_SYMBOLS": "BTC-BRL, USDT-BRL",
+	}))
+	if err != nil || strings.Join(c.MercadoBitcoinSymbols, ",") != "BTC-BRL,USDT-BRL" {
+		t.Errorf("symbols = %v, err %v", c.MercadoBitcoinSymbols, err)
+	}
+	_, err = Load(env(map[string]string{"TICKGUARD_BINANCE_SYMBOLS": "", "TICKGUARD_KRAKEN_SYMBOLS": ""}))
+	if err == nil || !strings.Contains(err.Error(), "TICKGUARD_MERCADOBITCOIN_SYMBOLS") {
+		t.Errorf("no symbols at all: err = %v", err)
+	}
+}
