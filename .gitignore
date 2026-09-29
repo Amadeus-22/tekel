@@ -1,0 +1,18 @@
+# build output
+/bin/
+
+# local runtime data
+/data/
+*.db
+*.db-shm
+*.db-wal
+.env
+
+# editors / OS
+.idea/
+.vscode/
+.DS_Store
+
+# test artefacts
+*.out
+coverage.*
