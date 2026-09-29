@@ -1,0 +1,409 @@
+{
+  "files": [
+    {
+      "file": "crypto/binance/hour/btcusdt_trade.zip",
+      "series": "crypto/binance/hour/btcusdt",
+      "rows": 30,
+      "first": "2018-05-01T00:00:00",
+      "last": "2018-05-02T05:00:00",
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    {
+      "file": "crypto/coinbase/daily/btcusd_trade.zip",
+      "series": "crypto/coinbase/daily/btcusd",
+      "rows": 20,
+      "first": "2014-12-01T00:00:00",
+      "last": "2015-01-23T00:00:00",
+      "error": 0,
+      "warn": 8,
+      "info": 0
+    },
+    {
+      "file": "crypto/coinbase/minute/btcusd/20161007_trade.zip",
+      "series": "crypto/coinbase/minute/btcusd",
+      "rows": 30,
+      "first": "2016-10-07T00:00:00",
+      "last": "2016-10-07T00:29:00",
+      "error": 0,
+      "warn": 1,
+      "info": 0
+    },
+    {
+      "file": "crypto/coinbase/minute/btcusd/20161009_trade.zip",
+      "series": "crypto/coinbase/minute/btcusd",
+      "rows": 30,
+      "first": "2016-10-09T00:00:00",
+      "last": "2016-10-09T00:29:00",
+      "error": 0,
+      "warn": 1,
+      "info": 0
+    },
+    {
+      "file": "crypto/coinbase/minute/ethusd/20170903_trade.zip",
+      "series": "crypto/coinbase/minute/ethusd",
+      "rows": 40,
+      "first": "2017-09-03T00:00:00",
+      "last": "2017-09-03T00:39:00",
+      "error": 7,
+      "warn": 2,
+      "info": 4
+    },
+    {
+      "file": "crypto/coinbase/tick/btcusd/20161007_trade.zip",
+      "series": "crypto/coinbase/tick/btcusd",
+      "rows": 40,
+      "first": "2016-10-07T00:00:04",
+      "last": "2016-10-07T00:16:26",
+      "error": 0,
+      "warn": 1,
+      "info": 0
+    },
+    {
+      "file": "crypto/kraken/minute/xbtusd/20200101_trade.zip",
+      "series": "crypto/kraken/minute/xbtusd",
+      "rows": 0,
+      "error": 1,
+      "warn": 0,
+      "info": 0
+    },
+    {
+      "file": "equity/usa/minute/aapl/20140609_trade.zip",
+      "series": "equity/usa/minute/aapl",
+      "rows": 30,
+      "first": "2014-06-09T04:00:00",
+      "last": "2014-06-09T05:13:00",
+      "error": 0,
+      "warn": 1,
+      "info": 0
+    }
+  ],
+  "series": [
+    {
+      "series": "crypto/binance/hour/btcusdt",
+      "time_zone": "UTC",
+      "files": 1,
+      "rows": 30,
+      "first": "2018-05-01T00:00:00",
+      "last": "2018-05-02T05:00:00",
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    {
+      "series": "crypto/coinbase/daily/btcusd",
+      "time_zone": "UTC",
+      "files": 1,
+      "rows": 20,
+      "first": "2014-12-01T00:00:00",
+      "last": "2015-01-23T00:00:00",
+      "error": 0,
+      "warn": 8,
+      "info": 0
+    },
+    {
+      "series": "crypto/coinbase/minute/btcusd",
+      "time_zone": "UTC",
+      "files": 2,
+      "rows": 60,
+      "first": "2016-10-07T00:00:00",
+      "last": "2016-10-09T00:29:00",
+      "error": 0,
+      "warn": 3,
+      "info": 0
+    },
+    {
+      "series": "crypto/coinbase/minute/ethusd",
+      "time_zone": "UTC",
+      "files": 1,
+      "rows": 40,
+      "first": "2017-09-03T00:00:00",
+      "last": "2017-09-03T00:39:00",
+      "error": 7,
+      "warn": 2,
+      "info": 4
+    },
+    {
+      "series": "crypto/coinbase/tick/btcusd",
+      "time_zone": "UTC",
+      "files": 1,
+      "rows": 40,
+      "first": "2016-10-07T00:00:04",
+      "last": "2016-10-07T00:16:26",
+      "error": 0,
+      "warn": 1,
+      "info": 0
+    },
+    {
+      "series": "crypto/kraken/minute/xbtusd",
+      "time_zone": "UTC",
+      "files": 1,
+      "rows": 0,
+      "error": 1,
+      "warn": 0,
+      "info": 0
+    },
+    {
+      "series": "equity/usa/minute/aapl",
+      "time_zone": "America/New_York",
+      "files": 1,
+      "rows": 30,
+      "first": "2014-06-09T04:00:00",
+      "last": "2014-06-09T05:13:00",
+      "error": 0,
+      "warn": 1,
+      "info": 0
+    }
+  ],
+  "issues": [
+    {
+      "file": "crypto/coinbase/daily/btcusd_trade.zip",
+      "line": 5,
+      "series": "crypto/coinbase/daily/btcusd",
+      "kind": "missing_bars",
+      "severity": "warn",
+      "time": "2014-12-05T00:00:00",
+      "detail": "1 daily bar(s) missing from 2014-12-05 00:00:00 to 2014-12-06 00:00:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/coinbase/daily/btcusd_trade.zip",
+      "line": 6,
+      "series": "crypto/coinbase/daily/btcusd",
+      "kind": "missing_bars",
+      "severity": "warn",
+      "time": "2014-12-07T00:00:00",
+      "detail": "1 daily bar(s) missing from 2014-12-07 00:00:00 to 2014-12-08 00:00:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/coinbase/daily/btcusd_trade.zip",
+      "line": 7,
+      "series": "crypto/coinbase/daily/btcusd",
+      "kind": "missing_bars",
+      "severity": "warn",
+      "time": "2014-12-09T00:00:00",
+      "detail": "1 daily bar(s) missing from 2014-12-09 00:00:00 to 2014-12-10 00:00:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/coinbase/daily/btcusd_trade.zip",
+      "line": 8,
+      "series": "crypto/coinbase/daily/btcusd",
+      "kind": "missing_bars",
+      "severity": "warn",
+      "time": "2014-12-11T00:00:00",
+      "detail": "1 daily bar(s) missing from 2014-12-11 00:00:00 to 2014-12-12 00:00:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/coinbase/daily/btcusd_trade.zip",
+      "line": 9,
+      "series": "crypto/coinbase/daily/btcusd",
+      "kind": "missing_bars",
+      "severity": "warn",
+      "time": "2014-12-13T00:00:00",
+      "detail": "5 daily bar(s) missing from 2014-12-13 00:00:00 to 2014-12-18 00:00:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/coinbase/daily/btcusd_trade.zip",
+      "line": 10,
+      "series": "crypto/coinbase/daily/btcusd",
+      "kind": "missing_bars",
+      "severity": "warn",
+      "time": "2014-12-19T00:00:00",
+      "detail": "20 daily bar(s) missing from 2014-12-19 00:00:00 to 2015-01-08 00:00:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/coinbase/daily/btcusd_trade.zip",
+      "line": 11,
+      "series": "crypto/coinbase/daily/btcusd",
+      "kind": "missing_bars",
+      "severity": "warn",
+      "time": "2015-01-09T00:00:00",
+      "detail": "4 daily bar(s) missing from 2015-01-09 00:00:00 to 2015-01-13 00:00:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/coinbase/daily/btcusd_trade.zip",
+      "line": 16,
+      "series": "crypto/coinbase/daily/btcusd",
+      "kind": "missing_bars",
+      "severity": "warn",
+      "time": "2015-01-18T00:00:00",
+      "detail": "1 daily bar(s) missing from 2015-01-18 00:00:00 to 2015-01-19 00:00:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/coinbase/minute/btcusd/20161007_trade.zip",
+      "series": "crypto/coinbase/minute/btcusd",
+      "kind": "missing_bars",
+      "severity": "warn",
+      "time": "2016-10-07T00:30:00",
+      "detail": "1410 minute bar(s) missing from 2016-10-07 00:30:00 to 2016-10-08 00:00:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/coinbase/minute/btcusd/20161009_trade.zip",
+      "series": "crypto/coinbase/minute/btcusd",
+      "kind": "missing_bars",
+      "severity": "warn",
+      "time": "2016-10-09T00:30:00",
+      "detail": "1410 minute bar(s) missing from 2016-10-09 00:30:00 to 2016-10-10 00:00:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/coinbase/minute/ethusd/20170903_trade.zip",
+      "line": 5,
+      "series": "crypto/coinbase/minute/ethusd",
+      "kind": "duplicate_timestamp",
+      "severity": "error",
+      "time": "2017-09-03T00:03:00",
+      "detail": "time 2017-09-03 00:03:00 repeats line 4"
+    },
+    {
+      "file": "crypto/coinbase/minute/ethusd/20170903_trade.zip",
+      "line": 6,
+      "series": "crypto/coinbase/minute/ethusd",
+      "kind": "missing_bars",
+      "severity": "info",
+      "time": "2017-09-03T00:04:00",
+      "detail": "1 minute bar(s) missing from 2017-09-03 00:04:00 to 2017-09-03 00:05:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/coinbase/minute/ethusd/20170903_trade.zip",
+      "line": 8,
+      "series": "crypto/coinbase/minute/ethusd",
+      "kind": "out_of_order",
+      "severity": "error",
+      "time": "2017-09-03T00:01:00",
+      "detail": "time 2017-09-03 00:01:00 is before line 7 (2017-09-03 00:06:00)"
+    },
+    {
+      "file": "crypto/coinbase/minute/ethusd/20170903_trade.zip",
+      "line": 9,
+      "series": "crypto/coinbase/minute/ethusd",
+      "kind": "missing_bars",
+      "severity": "info",
+      "time": "2017-09-03T00:07:00",
+      "detail": "1 minute bar(s) missing from 2017-09-03 00:07:00 to 2017-09-03 00:08:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/coinbase/minute/ethusd/20170903_trade.zip",
+      "line": 12,
+      "series": "crypto/coinbase/minute/ethusd",
+      "kind": "ohlc_inconsistent",
+      "severity": "error",
+      "time": "2017-09-03T00:11:00",
+      "detail": "high \u003c low (o=359 h=356.21 l=364.17 c=358.76)"
+    },
+    {
+      "file": "crypto/coinbase/minute/ethusd/20170903_trade.zip",
+      "line": 15,
+      "series": "crypto/coinbase/minute/ethusd",
+      "kind": "negative_volume",
+      "severity": "error",
+      "time": "2017-09-03T00:14:00",
+      "detail": "volume -3.5 is negative"
+    },
+    {
+      "file": "crypto/coinbase/minute/ethusd/20170903_trade.zip",
+      "line": 18,
+      "series": "crypto/coinbase/minute/ethusd",
+      "kind": "non_positive_price",
+      "severity": "error",
+      "time": "2017-09-03T00:17:00",
+      "detail": "price 0 is not positive"
+    },
+    {
+      "file": "crypto/coinbase/minute/ethusd/20170903_trade.zip",
+      "line": 20,
+      "series": "crypto/coinbase/minute/ethusd",
+      "kind": "unparseable_row",
+      "severity": "error",
+      "detail": "4 fields, want 6"
+    },
+    {
+      "file": "crypto/coinbase/minute/ethusd/20170903_trade.zip",
+      "line": 21,
+      "series": "crypto/coinbase/minute/ethusd",
+      "kind": "missing_bars",
+      "severity": "info",
+      "time": "2017-09-03T00:19:00",
+      "detail": "1 minute bar(s) missing from 2017-09-03 00:19:00 to 2017-09-03 00:20:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/coinbase/minute/ethusd/20170903_trade.zip",
+      "line": 30,
+      "series": "crypto/coinbase/minute/ethusd",
+      "kind": "price_spike",
+      "severity": "warn",
+      "time": "2017-09-03T00:29:00",
+      "detail": "price 1071.06 deviates 712.84 from the median 358.22 of 36 neighbouring rows (allowed 12.528, MAD 0.845)"
+    },
+    {
+      "file": "crypto/coinbase/minute/ethusd/20170903_trade.zip",
+      "line": 33,
+      "series": "crypto/coinbase/minute/ethusd",
+      "kind": "bad_time",
+      "severity": "error",
+      "time": "2017-09-03T00:32:30",
+      "detail": "time 2017-09-03 00:32:30 is not aligned to the minute resolution"
+    },
+    {
+      "file": "crypto/coinbase/minute/ethusd/20170903_trade.zip",
+      "line": 34,
+      "series": "crypto/coinbase/minute/ethusd",
+      "kind": "missing_bars",
+      "severity": "info",
+      "time": "2017-09-03T00:32:00",
+      "detail": "1 minute bar(s) missing from 2017-09-03 00:32:00 to 2017-09-03 00:33:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/coinbase/minute/ethusd/20170903_trade.zip",
+      "series": "crypto/coinbase/minute/ethusd",
+      "kind": "missing_bars",
+      "severity": "warn",
+      "time": "2017-09-03T00:40:00",
+      "detail": "1400 minute bar(s) missing from 2017-09-03 00:40:00 to 2017-09-04 00:00:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/coinbase/tick/btcusd/20161007_trade.zip",
+      "series": "crypto/coinbase/tick/btcusd",
+      "kind": "missing_bars",
+      "severity": "warn",
+      "time": "2016-10-07T00:16:26",
+      "detail": "no trades from 2016-10-07 00:16:26 to 2016-10-08 00:00:00 (LEAN writes no row for an interval without trades)"
+    },
+    {
+      "file": "crypto/kraken/minute/xbtusd/20200101_trade.zip",
+      "series": "crypto/kraken/minute/xbtusd",
+      "kind": "bad_file",
+      "severity": "error",
+      "detail": "zip has 2 entries, want 1"
+    },
+    {
+      "file": "equity/usa/minute/aapl/20140609_trade.zip",
+      "line": 1,
+      "series": "equity/usa/minute/aapl",
+      "kind": "price_spike",
+      "severity": "warn",
+      "time": "2014-06-09T04:00:00",
+      "detail": "price 645.57 deviates 553.07 from the median 92.5 of 29 neighbouring rows (allowed 1.85, MAD 0.1)"
+    },
+    {
+      "file": "crypto/coinbase/minute/btcusd",
+      "series": "crypto/coinbase/minute/btcusd",
+      "kind": "missing_days",
+      "severity": "warn",
+      "time": "2016-10-08T00:00:00",
+      "detail": "1 day(s) without a file: 2016-10-08 to 2016-10-08"
+    }
+  ],
+  "skipped": [
+    {
+      "file": "crypto/coinbase/minute/btcusd/20161007_quote.zip",
+      "reason": "quote data (only trade data is audited)"
+    }
+  ],
+  "issues_omitted": 0,
+  "rows": 220,
+  "totals": {
+    "error": 8,
+    "warn": 15,
+    "info": 4
+  }
+}

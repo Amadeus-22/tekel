@@ -1,0 +1,47 @@
+SERIES                         TZ                FILES  ROWS  FIRST                LAST                 ERROR  WARN  INFO
+crypto/binance/hour/btcusdt    UTC               1      30    2018-05-01T00:00:00  2018-05-02T05:00:00  0      0     0
+crypto/coinbase/daily/btcusd   UTC               1      20    2014-12-01T00:00:00  2015-01-23T00:00:00  0      8     0
+crypto/coinbase/minute/btcusd  UTC               2      60    2016-10-07T00:00:00  2016-10-09T00:29:00  0      3     0
+crypto/coinbase/minute/ethusd  UTC               1      40    2017-09-03T00:00:00  2017-09-03T00:39:00  7      2     4
+crypto/coinbase/tick/btcusd    UTC               1      40    2016-10-07T00:00:04  2016-10-07T00:16:26  0      1     0
+crypto/kraken/minute/xbtusd    UTC               1      0     -                    -                    1      0     0
+equity/usa/minute/aapl         America/New_York  1      30    2014-06-09T04:00:00  2014-06-09T05:13:00  0      1     0
+
+FILE                                              ROWS  FIRST                LAST                 ERROR  WARN  INFO
+crypto/binance/hour/btcusdt_trade.zip             30    2018-05-01T00:00:00  2018-05-02T05:00:00  0      0     0
+crypto/coinbase/daily/btcusd_trade.zip            20    2014-12-01T00:00:00  2015-01-23T00:00:00  0      8     0
+crypto/coinbase/minute/btcusd/20161007_trade.zip  30    2016-10-07T00:00:00  2016-10-07T00:29:00  0      1     0
+crypto/coinbase/minute/btcusd/20161009_trade.zip  30    2016-10-09T00:00:00  2016-10-09T00:29:00  0      1     0
+crypto/coinbase/minute/ethusd/20170903_trade.zip  40    2017-09-03T00:00:00  2017-09-03T00:39:00  7      2     4
+crypto/coinbase/tick/btcusd/20161007_trade.zip    40    2016-10-07T00:00:04  2016-10-07T00:16:26  0      1     0
+crypto/kraken/minute/xbtusd/20200101_trade.zip    0     -                    -                    1      0     0
+equity/usa/minute/aapl/20140609_trade.zip         30    2014-06-09T04:00:00  2014-06-09T05:13:00  0      1     0
+
+ISSUES (error and warn: 23, showing 23)
+crypto/coinbase/daily/btcusd_trade.zip:5             warn   missing_bars         1 daily bar(s) missing from 2014-12-05 00:00:00 to 2014-12-06 00:00:00 (LEAN writes no row for an interval without trades)
+crypto/coinbase/daily/btcusd_trade.zip:6             warn   missing_bars         1 daily bar(s) missing from 2014-12-07 00:00:00 to 2014-12-08 00:00:00 (LEAN writes no row for an interval without trades)
+crypto/coinbase/daily/btcusd_trade.zip:7             warn   missing_bars         1 daily bar(s) missing from 2014-12-09 00:00:00 to 2014-12-10 00:00:00 (LEAN writes no row for an interval without trades)
+crypto/coinbase/daily/btcusd_trade.zip:8             warn   missing_bars         1 daily bar(s) missing from 2014-12-11 00:00:00 to 2014-12-12 00:00:00 (LEAN writes no row for an interval without trades)
+crypto/coinbase/daily/btcusd_trade.zip:9             warn   missing_bars         5 daily bar(s) missing from 2014-12-13 00:00:00 to 2014-12-18 00:00:00 (LEAN writes no row for an interval without trades)
+crypto/coinbase/daily/btcusd_trade.zip:10            warn   missing_bars         20 daily bar(s) missing from 2014-12-19 00:00:00 to 2015-01-08 00:00:00 (LEAN writes no row for an interval without trades)
+crypto/coinbase/daily/btcusd_trade.zip:11            warn   missing_bars         4 daily bar(s) missing from 2015-01-09 00:00:00 to 2015-01-13 00:00:00 (LEAN writes no row for an interval without trades)
+crypto/coinbase/daily/btcusd_trade.zip:16            warn   missing_bars         1 daily bar(s) missing from 2015-01-18 00:00:00 to 2015-01-19 00:00:00 (LEAN writes no row for an interval without trades)
+crypto/coinbase/minute/btcusd/20161007_trade.zip     warn   missing_bars         1410 minute bar(s) missing from 2016-10-07 00:30:00 to 2016-10-08 00:00:00 (LEAN writes no row for an interval without trades)
+crypto/coinbase/minute/btcusd/20161009_trade.zip     warn   missing_bars         1410 minute bar(s) missing from 2016-10-09 00:30:00 to 2016-10-10 00:00:00 (LEAN writes no row for an interval without trades)
+crypto/coinbase/minute/ethusd/20170903_trade.zip:5   error  duplicate_timestamp  time 2017-09-03 00:03:00 repeats line 4
+crypto/coinbase/minute/ethusd/20170903_trade.zip:8   error  out_of_order         time 2017-09-03 00:01:00 is before line 7 (2017-09-03 00:06:00)
+crypto/coinbase/minute/ethusd/20170903_trade.zip:12  error  ohlc_inconsistent    high < low (o=359 h=356.21 l=364.17 c=358.76)
+crypto/coinbase/minute/ethusd/20170903_trade.zip:15  error  negative_volume      volume -3.5 is negative
+crypto/coinbase/minute/ethusd/20170903_trade.zip:18  error  non_positive_price   price 0 is not positive
+crypto/coinbase/minute/ethusd/20170903_trade.zip:20  error  unparseable_row      4 fields, want 6
+crypto/coinbase/minute/ethusd/20170903_trade.zip:30  warn   price_spike          price 1071.06 deviates 712.84 from the median 358.22 of 36 neighbouring rows (allowed 12.528, MAD 0.845)
+crypto/coinbase/minute/ethusd/20170903_trade.zip:33  error  bad_time             time 2017-09-03 00:32:30 is not aligned to the minute resolution
+crypto/coinbase/minute/ethusd/20170903_trade.zip     warn   missing_bars         1400 minute bar(s) missing from 2017-09-03 00:40:00 to 2017-09-04 00:00:00 (LEAN writes no row for an interval without trades)
+crypto/coinbase/tick/btcusd/20161007_trade.zip       warn   missing_bars         no trades from 2016-10-07 00:16:26 to 2016-10-08 00:00:00 (LEAN writes no row for an interval without trades)
+crypto/kraken/minute/xbtusd/20200101_trade.zip       error  bad_file             zip has 2 entries, want 1
+equity/usa/minute/aapl/20140609_trade.zip:1          warn   price_spike          price 645.57 deviates 553.07 from the median 92.5 of 29 neighbouring rows (allowed 1.85, MAD 0.1)
+crypto/coinbase/minute/btcusd                        warn   missing_days         1 day(s) without a file: 2016-10-08 to 2016-10-08
+
+SKIPPED 1 file(s): 1 × quote data (only trade data is audited)
+
+TOTAL files=8 rows=220 error=8 warn=15 info=4

@@ -115,9 +115,7 @@ type Stream struct {
 	seenQ  []int64 // ring buffer of the IDs in seen, oldest at seenAt
 	seenAt int
 
-	prices  []float64 // ring buffer of recent prices
-	priceAt int
-	scratch []float64
+	spikes *SpikeWindow
 }
 
 // NewStream creates the state for one stream. cfg must be valid; per-symbol
@@ -125,12 +123,11 @@ type Stream struct {
 // caller. The stream starts disconnected; call Connected when the feed is up.
 func NewStream(key domain.StreamKey, cfg Config) *Stream {
 	return &Stream{
-		key:     key,
-		cfg:     cfg,
-		seen:    make(map[int64]struct{}, cfg.DuplicateWindow),
-		seenQ:   make([]int64, 0, cfg.DuplicateWindow),
-		prices:  make([]float64, 0, cfg.SpikeWindow),
-		scratch: make([]float64, 0, cfg.SpikeWindow),
+		key:    key,
+		cfg:    cfg,
+		seen:   make(map[int64]struct{}, cfg.DuplicateWindow),
+		seenQ:  make([]int64, 0, cfg.DuplicateWindow),
+		spikes: NewSpikeWindow(cfg.SpikeRule()),
 	}
 }
 
@@ -272,32 +269,17 @@ func (s *Stream) remember(id int64) {
 }
 
 // checkSpike compares t's price with the rolling median of previous prices, then
-// adds the price to the window. Median and MAD are robust: one spike cannot drag
-// them the way it would drag a mean and standard deviation.
+// adds the price to the window.
 func (s *Stream) checkSpike(t domain.Trade) (domain.Incident, bool) {
 	price := t.Price.Float64()
-	defer s.addPrice(price)
-	if len(s.prices) < s.cfg.SpikeMinSamples {
-		return domain.Incident{}, false
-	}
-	median, mad := medianMAD(s.prices, s.scratch[:0])
-	allowed := math.Max(s.cfg.SpikeK*madToSigma*mad, s.cfg.SpikeMinDeviation*median)
-	dev := math.Abs(price - median)
-	if dev <= allowed {
+	defer s.spikes.Add(price)
+	r, spike := s.spikes.Check(price)
+	if !spike {
 		return domain.Incident{}, false
 	}
 	return s.incident(domain.KindPriceSpike, t, fmt.Sprintf(
 		"price %s deviates %.6g from rolling median %.6g (allowed %.6g, MAD %.6g, n=%d)",
-		t.Price, dev, median, allowed, mad, len(s.prices))), true
-}
-
-func (s *Stream) addPrice(p float64) {
-	if len(s.prices) < s.cfg.SpikeWindow {
-		s.prices = append(s.prices, p)
-		return
-	}
-	s.prices[s.priceAt] = p
-	s.priceAt = (s.priceAt + 1) % s.cfg.SpikeWindow
+		t.Price, r.Deviation, r.Median, r.Allowed, r.MAD, r.N)), true
 }
 
 // medianMAD returns the median of xs and the median absolute deviation from it.
