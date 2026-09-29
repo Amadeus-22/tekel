@@ -1,0 +1,21 @@
+# Local run: docker compose -f deploy/docker-compose.yml up --build
+services:
+  tickguard:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: tickguard:dev
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      TICKGUARD_LOG_LEVEL: info
+      TICKGUARD_BINANCE_SYMBOLS: BTCUSDT,ETHUSDT
+      TICKGUARD_KRAKEN_SYMBOLS: BTC/USD,ETH/USD
+    volumes:
+      # LEAN bars under /var/lib/tickguard/data, incidents in tickguard.db
+      - tickguard-data:/var/lib/tickguard
+    stop_grace_period: 15s
+
+volumes:
+  tickguard-data:
