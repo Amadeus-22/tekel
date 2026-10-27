@@ -16,6 +16,8 @@ carries a copy; this file is the source of truth.
    first version, not after the first incident.
 5. **Decisions are written down.** Anything a reviewer might question gets an ADR.
 
+How a change is planned, verified and handed over: see [DELIVERY.md](DELIVERY.md).
+
 ## Layout
 
 ```

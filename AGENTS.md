@@ -27,6 +27,11 @@ Do not read the README, ADRs or other packages unless the task is about them.
 - Adding or removing a package → update the Package map in `docs/ARCHITECTURE.md`
   in the same change. That map is what the next agent reads instead of exploring.
 
+## Delivering
+
+Follow `DELIVERY.md`: check what already owns the behaviour before adding code, test an
+allowed, a denied and a failing case, and report what was not verified.
+
 ## Verifying
 
 - While iterating: `go test ./internal/<pkg>/...` for the package you touched.
