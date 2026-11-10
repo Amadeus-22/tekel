@@ -179,6 +179,42 @@ func TestTradeValidate(t *testing.T) {
 	}
 }
 
+func TestBlockValidate(t *testing.T) {
+	now := time.Date(2026, 11, 10, 17, 14, 48, 0, time.UTC)
+	tests := []struct {
+		name   string
+		mutate func(*Block)
+		ok     bool
+	}{
+		{"valid", func(*Block) {}, true},
+		{"empty block", func(b *Block) { b.TxCount = 0 }, true},
+		{"no chain", func(b *Block) { b.Chain = "" }, false},
+		{"no network", func(b *Block) { b.Network = "" }, false},
+		{"negative nonce", func(b *Block) { b.Nonce = -1 }, false},
+		{"no hash", func(b *Block) { b.Hash = "" }, false},
+		{"negative tx count", func(b *Block) { b.TxCount = -1 }, false},
+		{"no chain time", func(b *Block) { b.ChainTime = time.Time{} }, false},
+		{"no received time", func(b *Block) { b.ReceivedTime = time.Time{} }, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := Block{Chain: ChainKlever, Network: "testnet", Nonce: 13844596, Hash: "70220820", TxCount: 2,
+				ChainTime: now, ReceivedTime: now}
+			tt.mutate(&b)
+			err := b.Validate()
+			if tt.ok && err != nil {
+				t.Fatalf("Validate() = %v, want nil", err)
+			}
+			if !tt.ok && !errors.Is(err, ErrInvalidBlock) {
+				t.Fatalf("Validate() = %v, want ErrInvalidBlock", err)
+			}
+		})
+	}
+	if got := (Block{Chain: ChainKlever, Network: "testnet"}).Key(); got != (StreamKey{Exchange: "klever", Symbol: "testnet"}) {
+		t.Errorf("Block.Key() = %v", got)
+	}
+}
+
 func TestKeys(t *testing.T) {
 	want := StreamKey{Exchange: ExchangeKraken, Symbol: "BTC/USD"}
 	if got := (Trade{Exchange: ExchangeKraken, Symbol: "BTC/USD"}).Key(); got != want {

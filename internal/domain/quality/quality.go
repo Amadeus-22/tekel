@@ -28,7 +28,7 @@ type Config struct {
 	// OutOfOrderTolerance is how far back in exchange time a trade may go before
 	// it is flagged as out of order.
 	OutOfOrderTolerance time.Duration
-	// StaleAfter flags a connected stream that saw no trade for this long.
+	// StaleAfter flags a connected stream that saw no trade (or block) for this long.
 	StaleAfter time.Duration
 	// DuplicateWindow is how many recent trade IDs are remembered.
 	DuplicateWindow int
@@ -99,8 +99,9 @@ type Verdict struct {
 // Stream is the validation state of one exchange/symbol feed. It is not safe for
 // concurrent use; the pipeline owns each Stream from a single goroutine.
 type Stream struct {
-	key domain.StreamKey
-	cfg Config
+	key   domain.StreamKey
+	cfg   Config
+	words words
 
 	connected    bool
 	downSince    time.Time
@@ -118,17 +119,35 @@ type Stream struct {
 	spikes *SpikeWindow
 }
 
-// NewStream creates the state for one stream. cfg must be valid; per-symbol
+// words name what a stream's sequence numbers count, for incident details.
+type words struct{ id, unit, units, time string }
+
+var (
+	tradeWords = words{id: "trade_id", unit: "trade", units: "trades", time: "exchange time"}
+	blockWords = words{id: "nonce", unit: "block", units: "blocks", time: "block time"}
+)
+
+// NewStream creates the state for one trade stream. cfg must be valid; per-symbol
 // thresholds (such as StaleAfter for an illiquid pair) are set in cfg by the
 // caller. The stream starts disconnected; call Connected when the feed is up.
 func NewStream(key domain.StreamKey, cfg Config) *Stream {
 	return &Stream{
 		key:    key,
 		cfg:    cfg,
+		words:  tradeWords,
 		seen:   make(map[int64]struct{}, cfg.DuplicateWindow),
 		seenQ:  make([]int64, 0, cfg.DuplicateWindow),
 		spikes: NewSpikeWindow(cfg.SpikeRule()),
 	}
+}
+
+// NewBlockStream creates the state for one chain block stream: the same rules
+// over the block nonce, observed with ObserveBlock. The spike settings in cfg
+// are unused.
+func NewBlockStream(key domain.StreamKey, cfg Config) *Stream {
+	s := NewStream(key, cfg)
+	s.words = blockWords
+	return s
 }
 
 // Key returns the stream's identity.
@@ -139,43 +158,61 @@ func (s *Stream) IsConnected() bool { return s.connected }
 
 // Observe runs every per-trade check against t and updates the stream state.
 func (s *Stream) Observe(t domain.Trade) Verdict {
-	s.lastActivity = t.ReceivedTime
-	s.staleSince = time.Time{}
-
-	if _, dup := s.seen[t.TradeID]; dup {
-		return Verdict{Drop: true, Incidents: []domain.Incident{s.incident(domain.KindDuplicate, t,
-			fmt.Sprintf("trade_id %d already seen in the last %d trades", t.TradeID, s.cfg.DuplicateWindow))}}
+	v := s.observe(t.TradeID, t.ExchangeTime, t.ReceivedTime)
+	if v.Drop {
+		return v
 	}
-	s.remember(t.TradeID)
+	if inc, ok := s.checkSpike(t); ok {
+		v.Incidents = append(v.Incidents, inc)
+	}
+	return v
+}
+
+// ObserveBlock runs the checks that apply to a chain block (duplicate,
+// sequence_gap over the nonce, out_of_order, clock_skew) and updates the stream
+// state. A block has no price, so there is no spike check.
+func (s *Stream) ObserveBlock(b domain.Block) Verdict {
+	return s.observe(b.Nonce, b.ChainTime, b.ReceivedTime)
+}
+
+// observe runs the checks shared by every stream kind on one event with
+// sequence number id.
+func (s *Stream) observe(id int64, exchTime, received time.Time) Verdict {
+	s.lastActivity = received
+	s.staleSince = time.Time{}
+	w := s.words
+
+	if _, dup := s.seen[id]; dup {
+		return Verdict{Drop: true, Incidents: []domain.Incident{s.incident(domain.KindDuplicate, id, received,
+			fmt.Sprintf("%s %d already seen in the last %d %s", w.id, id, s.cfg.DuplicateWindow, w.units))}}
+	}
+	s.remember(id)
 
 	var out []domain.Incident
 	if s.haveLast {
-		if t.TradeID > s.lastID+1 {
-			inc := s.incident(domain.KindSequenceGap, t, fmt.Sprintf(
-				"trade_id jumped from %d to %d while connected (%d missing)",
-				s.lastID, t.TradeID, t.TradeID-s.lastID-1))
-			inc.Start, inc.End = s.lastExchTime, t.ExchangeTime
+		if id > s.lastID+1 {
+			inc := s.incident(domain.KindSequenceGap, id, received, fmt.Sprintf(
+				"%s jumped from %d to %d while connected (%d missing)",
+				w.id, s.lastID, id, id-s.lastID-1))
+			inc.Start, inc.End = s.lastExchTime, exchTime
 			out = append(out, inc)
 		}
-		if behind := s.lastExchTime.Sub(t.ExchangeTime); behind > s.cfg.OutOfOrderTolerance {
-			out = append(out, s.incident(domain.KindOutOfOrder, t, fmt.Sprintf(
-				"exchange time %s is %s earlier than the previous trade",
-				t.ExchangeTime.Format(time.RFC3339Nano), behind)))
+		if behind := s.lastExchTime.Sub(exchTime); behind > s.cfg.OutOfOrderTolerance {
+			out = append(out, s.incident(domain.KindOutOfOrder, id, received, fmt.Sprintf(
+				"%s %s is %s earlier than the previous %s",
+				w.time, exchTime.Format(time.RFC3339Nano), behind, w.unit)))
 		}
 	}
-	if skew := t.ReceivedTime.Sub(t.ExchangeTime); skew.Abs() > s.cfg.ClockSkew {
-		out = append(out, s.incident(domain.KindClockSkew, t, fmt.Sprintf(
-			"received - exchange time = %s exceeds %s", skew, s.cfg.ClockSkew)))
-	}
-	if inc, ok := s.checkSpike(t); ok {
-		out = append(out, inc)
+	if skew := received.Sub(exchTime); skew.Abs() > s.cfg.ClockSkew {
+		out = append(out, s.incident(domain.KindClockSkew, id, received, fmt.Sprintf(
+			"received - %s = %s exceeds %s", w.time, skew, s.cfg.ClockSkew)))
 	}
 
-	if !s.haveLast || t.TradeID > s.lastID {
-		s.lastID = t.TradeID
+	if !s.haveLast || id > s.lastID {
+		s.lastID = id
 	}
-	if !s.haveLast || t.ExchangeTime.After(s.lastExchTime) {
-		s.lastExchTime = t.ExchangeTime
+	if !s.haveLast || exchTime.After(s.lastExchTime) {
+		s.lastExchTime = exchTime
 	}
 	s.haveLast = true
 	return Verdict{Incidents: out}
@@ -198,8 +235,8 @@ func (s *Stream) Connected(at time.Time) (domain.Incident, bool) {
 	inc := domain.Incident{
 		Exchange: s.key.Exchange, Symbol: s.key.Symbol, Kind: domain.KindDisconnect,
 		DetectedAt: at, Start: s.downSince, End: at,
-		Detail: fmt.Sprintf("connection down for %s; last trade_id before the gap: %d",
-			at.Sub(s.downSince).Round(time.Millisecond), s.lastID),
+		Detail: fmt.Sprintf("connection down for %s; last %s before the gap: %d",
+			at.Sub(s.downSince).Round(time.Millisecond), s.words.id, s.lastID),
 	}
 	s.downSince = time.Time{}
 	return inc, true
@@ -245,14 +282,16 @@ func (s *Stream) CheckStale(now time.Time) (domain.Incident, bool) {
 	return domain.Incident{
 		Exchange: s.key.Exchange, Symbol: s.key.Symbol, Kind: domain.KindStaleStream,
 		DetectedAt: now, Start: s.lastActivity, End: now,
-		Detail: fmt.Sprintf("no trade for %s (threshold %s)", idle.Round(time.Millisecond), staleAfter),
+		Detail: fmt.Sprintf("no %s for %s (threshold %s)", s.words.unit, idle.Round(time.Millisecond), staleAfter),
 	}, true
 }
 
-func (s *Stream) incident(kind domain.IncidentKind, t domain.Trade, detail string) domain.Incident {
+// incident builds a point incident about the event with sequence number id.
+// For a block stream the incident's TradeID holds the block nonce.
+func (s *Stream) incident(kind domain.IncidentKind, id int64, received time.Time, detail string) domain.Incident {
 	return domain.Incident{
 		Exchange: s.key.Exchange, Symbol: s.key.Symbol, Kind: kind,
-		DetectedAt: t.ReceivedTime, TradeID: t.TradeID, Detail: detail,
+		DetectedAt: received, TradeID: id, Detail: detail,
 	}
 }
 
@@ -277,7 +316,7 @@ func (s *Stream) checkSpike(t domain.Trade) (domain.Incident, bool) {
 	if !spike {
 		return domain.Incident{}, false
 	}
-	return s.incident(domain.KindPriceSpike, t, fmt.Sprintf(
+	return s.incident(domain.KindPriceSpike, t.TradeID, t.ReceivedTime, fmt.Sprintf(
 		"price %s deviates %.6g from rolling median %.6g (allowed %.6g, MAD %.6g, n=%d)",
 		t.Price, r.Deviation, r.Median, r.Allowed, r.MAD, r.N)), true
 }

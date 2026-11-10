@@ -21,6 +21,8 @@ const (
 	EventConnected
 	// EventDisconnected means the feed lost its connection.
 	EventDisconnected
+	// EventBlock carries a decoded chain block (feeds of kind StreamBlocks).
+	EventBlock
 )
 
 // Event is what a Feed emits. Connection events apply to every symbol of the feed.
@@ -30,6 +32,7 @@ type Event struct {
 	// At is when the event happened on tickguard's clock.
 	At    time.Time
 	Trade domain.Trade // EventTrade only
+	Block domain.Block // EventBlock only
 	Err   error        // EventDisconnected only: why the connection ended
 }
 
@@ -37,11 +40,15 @@ type Event struct {
 // (backpressure) and returns ctx.Err() if ctx ends first.
 type Emit func(ctx context.Context, ev Event) error
 
-// Feed is one exchange connection carrying one or more symbols.
+// Feed is one exchange (or chain) connection carrying one or more symbols.
 type Feed interface {
 	Exchange() string
 	// Symbols lists the symbols the feed subscribes to, in the exchange's spelling.
 	Symbols() []string
+	// Kind says what the feed's streams carry: trades (EventTrade) or chain
+	// blocks (EventBlock). The pipeline reads it once, when it registers the
+	// feed's streams; see docs/adr/0007.
+	Kind() domain.StreamKind
 	// Run connects, keeps reconnecting on failure and emits events until ctx ends.
 	// It returns nil on cancellation and an error only for unrecoverable problems.
 	Run(ctx context.Context, emit Emit) error

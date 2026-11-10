@@ -7,6 +7,7 @@ var (
 	ErrInvalidDecimal = errors.New("invalid decimal")
 	ErrInvalidSide    = errors.New("invalid side")
 	ErrInvalidTrade   = errors.New("invalid trade")
+	ErrInvalidBlock   = errors.New("invalid block")
 	ErrInvalidKind    = errors.New("invalid incident kind")
 	// ErrLateTrade means a trade belongs to a minute whose bar was already emitted.
 	ErrLateTrade = errors.New("trade arrived after its bar was emitted")

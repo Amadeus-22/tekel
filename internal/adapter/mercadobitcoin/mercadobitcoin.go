@@ -112,6 +112,9 @@ func (f *Feed) Exchange() string { return domain.ExchangeMercadoBitcoin }
 // Symbols implements app.Feed.
 func (f *Feed) Symbols() []string { return append([]string(nil), f.cfg.Symbols...) }
 
+// Kind implements app.Feed: the feed carries trades.
+func (f *Feed) Kind() domain.StreamKind { return domain.StreamTrades }
+
 // SubscribeRequest is the documented request, one per market:
 //
 //	{"type":"subscribe","subscription":{"name":"trade","id":"BRLBTC"}}

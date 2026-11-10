@@ -81,6 +81,9 @@ func (f *Feed) Exchange() string { return domain.ExchangeKraken }
 // Symbols implements app.Feed.
 func (f *Feed) Symbols() []string { return append([]string(nil), f.cfg.Symbols...) }
 
+// Kind implements app.Feed: the feed carries trades.
+func (f *Feed) Kind() domain.StreamKind { return domain.StreamTrades }
+
 // SubscribeRequest is the documented request:
 //
 //	{"method":"subscribe","params":{"channel":"trade","symbol":["MATIC/USD"],"snapshot":true}}

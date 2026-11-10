@@ -83,6 +83,9 @@ func (f *Feed) Exchange() string { return domain.ExchangeBinance }
 // Symbols implements app.Feed.
 func (f *Feed) Symbols() []string { return append([]string(nil), f.cfg.Symbols...) }
 
+// Kind implements app.Feed: the feed carries trades.
+func (f *Feed) Kind() domain.StreamKind { return domain.StreamTrades }
+
 // Run implements app.Feed.
 func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 	return wsconn.Run(ctx, f.cfg.Conn, wsconn.Handlers{
