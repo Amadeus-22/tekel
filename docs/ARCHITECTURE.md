@@ -76,7 +76,7 @@ flowchart LR
 | `internal/adapter/binance` | combined-stream `@trade` client, message decoding |
 | `internal/adapter/kraken` | WS v2 client, `trade` subscribe, decoding, rejects bad symbols as permanent errors |
 | `internal/adapter/mercadobitcoin` | WS client, one `trade` subscribe per market, `{"type":"ping"}` keepalive, decoding, server errors are permanent |
-| `internal/adapter/wsconn` | shared reconnect loop with jittered backoff (cap 30s), ping/pong or application ping, handshake header, read deadline; log `Throttle` |
+| `internal/adapter/wsconn` | shared reconnect loop with jittered backoff (cap 30s), ping/pong or application ping, handshake header, read deadline; `Malformed` (counts every undecodable message, logs one sample per minute) |
 | `internal/adapter/wsconn/wstest` | local WebSocket test server (test helper, like `httptest`) |
 | `internal/adapter/sqlite` | `IncidentStore` + incident query, schema, readiness ping |
 | `internal/adapter/leanfs` | `BarSink` writing LEAN zips atomically (temp file + rename), continues a day after restart; `Source` (read-only `LeanSource` over a folder or one zip) |

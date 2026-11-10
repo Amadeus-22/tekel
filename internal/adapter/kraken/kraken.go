@@ -49,8 +49,8 @@ type Config struct {
 
 // Feed implements app.Feed for Kraken.
 type Feed struct {
-	cfg      Config
-	throttle *wsconn.Throttle
+	cfg       Config
+	malformed *wsconn.Malformed
 }
 
 // New validates cfg and returns a feed.
@@ -66,16 +66,13 @@ func New(cfg Config) (*Feed, error) {
 	if cfg.Logger == nil {
 		return nil, errors.New("kraken: logger is required")
 	}
-	if cfg.DecodeErrors == nil {
-		cfg.DecodeErrors = func() {}
-	}
 	if cfg.Conn.ReadTimeout == 0 || cfg.Conn.ReadTimeout > defaultReadTimeout {
 		cfg.Conn.ReadTimeout = defaultReadTimeout
 	}
 	cfg.Conn.Name = domain.ExchangeKraken
 	cfg.Conn.URL = cfg.URL
 	cfg.Conn.Logger = cfg.Logger
-	return &Feed{cfg: cfg, throttle: wsconn.NewThrottle(time.Minute)}, nil
+	return &Feed{cfg: cfg, malformed: wsconn.NewMalformed(domain.ExchangeKraken, cfg.Logger, cfg.DecodeErrors)}, nil
 }
 
 // Exchange implements app.Feed.
@@ -125,7 +122,7 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 		Message: func(ctx context.Context, msg []byte, received time.Time) error {
 			m, err := Decode(msg, received)
 			if err != nil {
-				f.decodeError(msg, received, err)
+				f.malformed.Report(msg, received, err)
 				return nil
 			}
 			if m.SubscribeError != "" {
@@ -141,18 +138,6 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 			return nil
 		},
 	})
-}
-
-func (f *Feed) decodeError(msg []byte, now time.Time, err error) {
-	f.cfg.DecodeErrors()
-	if ok, suppressed := f.throttle.Allow(now); ok {
-		sample := string(msg)
-		if len(sample) > 200 {
-			sample = sample[:200] + "…"
-		}
-		f.cfg.Logger.Warn("malformed message skipped", "exchange", domain.ExchangeKraken,
-			"error", err.Error(), "sample", sample, "suppressed_since_last_log", suppressed)
-	}
 }
 
 // Message is the part of one decoded Kraken message tickguard acts on.

@@ -413,6 +413,25 @@ func TestThrottle(t *testing.T) {
 	}
 }
 
+func TestMalformedCountsEveryMessageAndLogsASample(t *testing.T) {
+	var logs strings.Builder
+	count := 0
+	m := NewMalformed("test", slog.New(slog.NewTextHandler(&logs, nil)), func() { count++ })
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	long := strings.Repeat("x", 300)
+	m.Report([]byte(long), now, errors.New("bad"))
+	m.Report([]byte("second"), now.Add(time.Second), errors.New("bad"))
+	if count != 2 {
+		t.Errorf("counted %d, want 2", count)
+	}
+	out := logs.String()
+	if strings.Count(out, "malformed message skipped") != 1 || !strings.Contains(out, strings.Repeat("x", 200)+"…") ||
+		strings.Contains(out, strings.Repeat("x", 201)) || strings.Contains(out, "second") {
+		t.Errorf("logs = %s", out)
+	}
+	NewMalformed("test", slog.New(slog.DiscardHandler), nil).Report(nil, now, errors.New("nil count is allowed"))
+}
+
 func TestPermanentErrorUnwraps(t *testing.T) {
 	base := errors.New("base")
 	if !errors.Is(Permanent(base), base) {

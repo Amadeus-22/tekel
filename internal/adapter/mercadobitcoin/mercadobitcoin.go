@@ -74,9 +74,9 @@ type Config struct {
 
 // Feed implements app.Feed for Mercado Bitcoin.
 type Feed struct {
-	cfg      Config
-	ids      map[string]string // WebSocket market id → symbol
-	throttle *wsconn.Throttle
+	cfg       Config
+	ids       map[string]string // WebSocket market id → symbol
+	malformed *wsconn.Malformed
 }
 
 // New validates cfg and returns a feed.
@@ -94,9 +94,6 @@ func New(cfg Config) (*Feed, error) {
 	if cfg.Logger == nil {
 		return nil, errors.New("mercadobitcoin: logger is required")
 	}
-	if cfg.DecodeErrors == nil {
-		cfg.DecodeErrors = func() {}
-	}
 	if cfg.Conn.ReadTimeout == 0 || cfg.Conn.ReadTimeout > defaultReadTimeout {
 		cfg.Conn.ReadTimeout = defaultReadTimeout
 	}
@@ -106,7 +103,7 @@ func New(cfg Config) (*Feed, error) {
 	cfg.Conn.Name = domain.ExchangeMercadoBitcoin
 	cfg.Conn.URL = cfg.URL
 	cfg.Conn.Logger = cfg.Logger
-	return &Feed{cfg: cfg, ids: ids, throttle: wsconn.NewThrottle(time.Minute)}, nil
+	return &Feed{cfg: cfg, ids: ids, malformed: wsconn.NewMalformed(domain.ExchangeMercadoBitcoin, cfg.Logger, cfg.DecodeErrors)}, nil
 }
 
 // Exchange implements app.Feed.
@@ -155,7 +152,7 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 		Message: func(ctx context.Context, msg []byte, received time.Time) error {
 			m, err := Decode(msg, received, f.ids)
 			if err != nil {
-				f.decodeError(msg, received, err)
+				f.malformed.Report(msg, received, err)
 				return nil
 			}
 			if m.Error != "" {
@@ -171,18 +168,6 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 			return emit(ctx, app.Event{Kind: app.EventTrade, Exchange: ex, At: received, Trade: *m.Trade})
 		},
 	})
-}
-
-func (f *Feed) decodeError(msg []byte, now time.Time, err error) {
-	f.cfg.DecodeErrors()
-	if ok, suppressed := f.throttle.Allow(now); ok {
-		sample := string(msg)
-		if len(sample) > 200 {
-			sample = sample[:200] + "…"
-		}
-		f.cfg.Logger.Warn("malformed message skipped", "exchange", domain.ExchangeMercadoBitcoin,
-			"error", err.Error(), "sample", sample, "suppressed_since_last_log", suppressed)
-	}
 }
 
 // Message is the part of one decoded message tickguard acts on.

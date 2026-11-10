@@ -42,8 +42,8 @@ type Config struct {
 
 // Feed implements app.Feed for Binance.
 type Feed struct {
-	cfg      Config
-	throttle *wsconn.Throttle
+	cfg       Config
+	malformed *wsconn.Malformed
 }
 
 // New validates cfg and returns a feed.
@@ -59,13 +59,10 @@ func New(cfg Config) (*Feed, error) {
 	if cfg.Logger == nil {
 		return nil, errors.New("binance: logger is required")
 	}
-	if cfg.DecodeErrors == nil {
-		cfg.DecodeErrors = func() {}
-	}
 	cfg.Conn.Name = domain.ExchangeBinance
 	cfg.Conn.URL = StreamURL(cfg.BaseURL, cfg.Symbols)
 	cfg.Conn.Logger = cfg.Logger
-	return &Feed{cfg: cfg, throttle: wsconn.NewThrottle(time.Minute)}, nil
+	return &Feed{cfg: cfg, malformed: wsconn.NewMalformed(domain.ExchangeBinance, cfg.Logger, cfg.DecodeErrors)}, nil
 }
 
 // StreamURL builds the combined-stream URL. Subscribing through the URL means a
@@ -98,7 +95,7 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 		Message: func(ctx context.Context, msg []byte, received time.Time) error {
 			t, ok, err := Decode(msg, received)
 			if err != nil {
-				f.decodeError(msg, received, err)
+				f.malformed.Report(msg, received, err)
 				return nil
 			}
 			if !ok {
@@ -107,14 +104,6 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 			return emit(ctx, app.Event{Kind: app.EventTrade, Exchange: domain.ExchangeBinance, At: received, Trade: t})
 		},
 	})
-}
-
-func (f *Feed) decodeError(msg []byte, now time.Time, err error) {
-	f.cfg.DecodeErrors()
-	if ok, suppressed := f.throttle.Allow(now); ok {
-		f.cfg.Logger.Warn("malformed message skipped", "exchange", domain.ExchangeBinance,
-			"error", err.Error(), "sample", truncate(msg, 200), "suppressed_since_last_log", suppressed)
-	}
 }
 
 // envelope is the combined-stream wrapper: {"stream":"<streamName>","data":<rawPayload>}.
@@ -188,11 +177,4 @@ func Decode(msg []byte, received time.Time) (t domain.Trade, ok bool, err error)
 		return domain.Trade{}, false, fmt.Errorf("decode %s: %w", env.Stream, err)
 	}
 	return t, true, nil
-}
-
-func truncate(b []byte, n int) string {
-	if len(b) <= n {
-		return string(b)
-	}
-	return string(b[:n]) + "…"
 }
