@@ -3,7 +3,6 @@ package wsconn
 import (
 	"context"
 	"errors"
-	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -25,7 +24,7 @@ func testConfig(url string) Config {
 	cfg.WriteTimeout = time.Second
 	cfg.BackoffMin = time.Millisecond
 	cfg.BackoffMax = 5 * time.Millisecond
-	cfg.Logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	cfg.Logger = slog.New(slog.DiscardHandler)
 	return cfg
 }
 

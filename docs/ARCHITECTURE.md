@@ -85,6 +85,7 @@ flowchart LR
 | `internal/adapter/klever` | KleverChain block feed: node `/subscribe` WebSocket, `blocks` subscription, decoding, chain ID check; node errors and a wrong chain are permanent |
 | `internal/adapter/wsconn` | shared reconnect loop with jittered backoff (cap 30s), ping/pong or application ping, handshake header, read deadline; `Malformed` (counts every undecodable message, logs one sample per minute); adapter setup helpers `CheckSymbols`, `Config.CapReadTimeout`, `Config.Bind` |
 | `internal/adapter/wsconn/wstest` | local WebSocket test server (test helper, like `httptest`) |
+| `internal/adapter/feedtest` | feed test helpers: `FastConn` (millisecond backoff), `Collect` (run a feed until it emitted n events) |
 | `internal/adapter/sqlite` | `IncidentStore` + incident query, schema, readiness ping |
 | `internal/adapter/leanfs` | `BarSink` writing LEAN zips atomically (temp file + rename), continues a day after restart; `Source` (read-only `LeanSource` over a folder or one zip) |
 | `internal/adapter/auditreport` | renders an `AuditReport` as a table or JSON; golden fixtures trimmed from LEAN samples in `testdata/` |

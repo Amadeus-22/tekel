@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"log/slog"
 	"strings"
 	"testing"
@@ -46,7 +45,7 @@ func TestBuildFeedsHonoursDisabledExchange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	feeds, err := buildFeeds(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), metrics.New())
+	feeds, err := buildFeeds(cfg, slog.New(slog.DiscardHandler), metrics.New())
 	if err != nil {
 		t.Fatal(err)
 	}

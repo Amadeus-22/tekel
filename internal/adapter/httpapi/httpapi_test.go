@@ -48,7 +48,7 @@ func newServer(t *testing.T, inc *fakeIncidents, ready error) *httptest.Server {
 		Incidents: inc,
 		Ready:     fakePinger{err: ready},
 		Metrics:   http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { io.WriteString(w, "metrics") }),
-		Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:    slog.New(slog.DiscardHandler),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"strings"
 	"sync"
@@ -179,7 +178,7 @@ func newHarness(t *testing.T, cfg Config, feeds ...Feed) *harness {
 	h := &harness{store: &fakeStore{}, sink: &fakeSink{}, metrics: newFakeMetrics()}
 	p, err := NewPipeline(cfg, Deps{
 		Feeds: feeds, Incidents: h.store, Bars: h.sink, Metrics: h.metrics,
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger: slog.New(slog.DiscardHandler),
 		Now:    func() time.Time { return t0.Add(time.Hour) },
 	})
 	if err != nil {
@@ -494,7 +493,7 @@ func TestPipelineFeedFailureStopsRun(t *testing.T) {
 func TestNewPipelineValidates(t *testing.T) {
 	ok := Deps{
 		Feeds: []Feed{newFakeFeed(ex, nil)}, Incidents: &fakeStore{}, Bars: &fakeSink{},
-		Metrics: newFakeMetrics(), Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Metrics: newFakeMetrics(), Logger: slog.New(slog.DiscardHandler),
 	}
 	if _, err := NewPipeline(DefaultConfig(), ok); err != nil {
 		t.Fatalf("valid config rejected: %v", err)

@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"log/slog"
+	"slices"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/gorilla/websocket"
 
+	"github.com/Amadeus-22/tickguard/internal/adapter/feedtest"
 	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
 	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn/wstest"
 	"github.com/Amadeus-22/tickguard/internal/app"
@@ -95,35 +96,28 @@ func TestSubscribeRequestShape(t *testing.T) {
 	}
 }
 
-func discard() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
-
 func TestNewValidates(t *testing.T) {
+	log := slog.New(slog.DiscardHandler)
 	for name, tt := range map[string]struct {
 		cfg  Config
 		want string
 	}{
-		"no symbols": {Config{Logger: discard()}, "kraken: at least one symbol is required"},
-		"no slash":   {Config{Symbols: []string{"BTCUSD"}, Logger: discard()}, `kraken: symbol "BTCUSD" must look like BTC/USD`},
-		"lowercase":  {Config{Symbols: []string{"btc/usd"}, Logger: discard()}, `kraken: symbol "btc/usd" must look like BTC/USD`},
+		"no symbols": {Config{Logger: log}, "kraken: at least one symbol is required"},
+		"no slash":   {Config{Symbols: []string{"BTCUSD"}, Logger: log}, `kraken: symbol "BTCUSD" must look like BTC/USD`},
+		"lowercase":  {Config{Symbols: []string{"btc/usd"}, Logger: log}, `kraken: symbol "btc/usd" must look like BTC/USD`},
 		"no logger":  {Config{Symbols: []string{"BTC/USD"}}, "kraken: logger is required"},
 	} {
 		if _, err := New(tt.cfg); err == nil || err.Error() != tt.want {
 			t.Errorf("%s: New() = %v, want %q", name, err, tt.want)
 		}
 	}
-	f, err := New(Config{URL: DefaultURL, Symbols: []string{"BTC/USD"}, Logger: discard(), Conn: wsconn.DefaultConfig()})
+	f, err := New(Config{URL: DefaultURL, Symbols: []string{"BTC/USD"}, Logger: log, Conn: wsconn.DefaultConfig()})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if f.Exchange() != "kraken" || f.Symbols()[0] != "BTC/USD" || f.cfg.Conn.ReadTimeout != defaultReadTimeout {
 		t.Errorf("feed = %s %v read timeout %v", f.Exchange(), f.Symbols(), f.cfg.Conn.ReadTimeout)
 	}
-}
-
-func testConn() wsconn.Config {
-	c := wsconn.DefaultConfig()
-	c.BackoffMin, c.BackoffMax = time.Millisecond, 5*time.Millisecond
-	return c
 }
 
 func TestFeedSubscribesOnEveryConnection(t *testing.T) {
@@ -144,39 +138,21 @@ func TestFeedSubscribesOnEveryConnection(t *testing.T) {
 		wstest.DrainUntilClosed(conn)
 	})
 
-	decodeErrors := 0
-	var mu sync.Mutex
-	f, err := New(Config{URL: srv.URL("/v2"), Symbols: []string{"MATIC/USD"}, Conn: testConn(), Logger: discard(),
-		DecodeErrors: func() { mu.Lock(); decodeErrors++; mu.Unlock() }})
+	var decodeErrors atomic.Int32
+	f, err := New(Config{URL: srv.URL("/v2"), Symbols: []string{"MATIC/USD"}, Conn: feedtest.FastConn(),
+		Logger: slog.New(slog.DiscardHandler), DecodeErrors: func() { decodeErrors.Add(1) }})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	var kinds []app.EventKind
-	enough := make(chan struct{})
-	emit := func(_ context.Context, ev app.Event) error {
-		mu.Lock()
-		defer mu.Unlock()
-		kinds = append(kinds, ev.Kind)
+	events, err := feedtest.Collect(t, f, 5)
+	if err != nil {
+		t.Fatalf("Run() = %v", err)
+	}
+	for _, ev := range events {
 		if ev.Kind == app.EventTrade && ev.Trade.TradeID != 4665906 {
 			t.Errorf("trade = %+v", ev.Trade)
 		}
-		if len(kinds) == 5 {
-			close(enough)
-		}
-		return nil
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan error, 1)
-	go func() { done <- f.Run(ctx, emit) }()
-	select {
-	case <-enough:
-	case <-time.After(5 * time.Second):
-		t.Fatal("did not receive the expected events")
-	}
-	cancel()
-	if err := <-done; err != nil {
-		t.Fatalf("Run() = %v", err)
 	}
 
 	for i := 0; i < 2; i++ {
@@ -185,15 +161,11 @@ func TestFeedSubscribesOnEveryConnection(t *testing.T) {
 			t.Errorf("subscribe %d = %s", i+1, got)
 		}
 	}
-	mu.Lock()
-	defer mu.Unlock()
 	want := []app.EventKind{app.EventConnected, app.EventTrade, app.EventDisconnected, app.EventConnected, app.EventTrade}
-	for i, k := range want {
-		if kinds[i] != k {
-			t.Fatalf("events = %v, want %v", kinds, want)
-		}
+	if got := feedtest.Kinds(events); !slices.Equal(got, want) {
+		t.Fatalf("events = %v, want %v", got, want)
 	}
-	if decodeErrors < 1 {
+	if decodeErrors.Load() < 1 {
 		t.Error("malformed trade message was not counted")
 	}
 }
@@ -205,7 +177,7 @@ func TestFeedStopsOnRejectedSubscription(t *testing.T) {
 			[]byte(`{"method":"subscribe","success":false,"error":"Currency pair not supported","symbol":"ABC/USD"}`))
 		wstest.DrainUntilClosed(conn)
 	})
-	f, _ := New(Config{URL: srv.URL("/v2"), Symbols: []string{"ABC/USD"}, Conn: testConn(), Logger: discard()})
+	f, _ := New(Config{URL: srv.URL("/v2"), Symbols: []string{"ABC/USD"}, Conn: feedtest.FastConn(), Logger: slog.New(slog.DiscardHandler)})
 	err := f.Run(context.Background(), func(context.Context, app.Event) error { return nil })
 	var perr *wsconn.PermanentError
 	if !errors.As(err, &perr) || !strings.Contains(err.Error(), "Currency pair not supported") {

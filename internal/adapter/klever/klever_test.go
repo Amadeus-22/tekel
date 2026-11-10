@@ -2,7 +2,6 @@ package klever
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"github.com/Amadeus-22/tickguard/internal/adapter/feedtest"
 	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
 	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn/wstest"
 	"github.com/Amadeus-22/tickguard/internal/app"
@@ -126,20 +126,19 @@ func TestSubscribeRequestShape(t *testing.T) {
 	}
 }
 
-func discard() *slog.Logger { return slog.New(slog.DiscardHandler) }
-
 func TestNewValidates(t *testing.T) {
+	log := slog.New(slog.DiscardHandler)
 	for name, cfg := range map[string]Config{
-		"no network":          {Logger: discard()},
-		"unknown network":     {Network: "devnet", URL: "ws://x", Logger: discard()},
-		"mainnet without url": {Network: "mainnet", Logger: discard()},
+		"no network":          {Logger: log},
+		"unknown network":     {Network: "devnet", URL: "ws://x", Logger: log},
+		"mainnet without url": {Network: "mainnet", Logger: log},
 		"no logger":           {Network: "testnet"},
 	} {
 		if _, err := New(cfg); err == nil {
 			t.Errorf("%s: New() = nil error", name)
 		}
 	}
-	f, err := New(Config{Network: "testnet", Logger: discard(), Conn: wsconn.DefaultConfig()})
+	f, err := New(Config{Network: "testnet", Logger: log, Conn: wsconn.DefaultConfig()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,49 +147,9 @@ func TestNewValidates(t *testing.T) {
 		c.URL != TestnetURL || c.ReadTimeout != defaultReadTimeout || c.MaxMessageBytes != maxMessageBytes || f.chainID != "109" {
 		t.Errorf("feed = %s %v %s chain %s conn %+v", f.Exchange(), f.Symbols(), f.Kind(), f.chainID, c)
 	}
-	if _, err := New(Config{Network: "mainnet", URL: "wss://own-node.example/subscribe", Logger: discard()}); err != nil {
+	if _, err := New(Config{Network: "mainnet", URL: "wss://own-node.example/subscribe", Logger: log}); err != nil {
 		t.Errorf("mainnet with url: %v", err)
 	}
-}
-
-func testConn() wsconn.Config {
-	c := wsconn.DefaultConfig()
-	c.BackoffMin, c.BackoffMax = time.Millisecond, 5*time.Millisecond
-	return c
-}
-
-// run runs a feed against srv until it has emitted n events (or Run ends),
-// then cancels and returns the events and Run's result.
-func run(t *testing.T, f *Feed, n int) ([]app.Event, error) {
-	t.Helper()
-	var mu sync.Mutex
-	var events []app.Event
-	enough := make(chan struct{})
-	emit := func(_ context.Context, ev app.Event) error {
-		mu.Lock()
-		defer mu.Unlock()
-		events = append(events, ev)
-		if len(events) == n {
-			close(enough)
-		}
-		return nil
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	done := make(chan error, 1)
-	go func() { done <- f.Run(ctx, emit) }()
-	var err error
-	select {
-	case <-enough:
-		cancel()
-		err = <-done
-	case err = <-done:
-	case <-time.After(5 * time.Second):
-		t.Fatal("feed did not emit the expected events")
-	}
-	mu.Lock()
-	defer mu.Unlock()
-	return append([]app.Event(nil), events...), err
 }
 
 // TestFeedEndToEnd plays recorded testnet blocks through a local node: a normal
@@ -226,12 +185,12 @@ func TestFeedEndToEnd(t *testing.T) {
 
 	decodeErrors := 0
 	var mu sync.Mutex
-	f, err := New(Config{URL: srv.URL("/subscribe"), Network: "testnet", Conn: testConn(), Logger: discard(),
+	f, err := New(Config{URL: srv.URL("/subscribe"), Network: "testnet", Conn: feedtest.FastConn(), Logger: slog.New(slog.DiscardHandler),
 		DecodeErrors: func() { mu.Lock(); decodeErrors++; mu.Unlock() }})
 	if err != nil {
 		t.Fatal(err)
 	}
-	events, err := run(t, f, 8)
+	events, err := feedtest.Collect(t, f, 8)
 	if err != nil {
 		t.Fatalf("Run() = %v", err)
 	}
@@ -293,8 +252,8 @@ func TestFeedStopsOnNodeError(t *testing.T) {
 		_ = conn.WriteMessage(websocket.TextMessage, []byte(liveBadTypeErr))
 		wstest.DrainUntilClosed(conn)
 	})
-	f, _ := New(Config{URL: srv.URL("/subscribe"), Network: "testnet", Conn: testConn(), Logger: discard()})
-	_, err := run(t, f, 99)
+	f, _ := New(Config{URL: srv.URL("/subscribe"), Network: "testnet", Conn: feedtest.FastConn(), Logger: slog.New(slog.DiscardHandler)})
+	_, err := feedtest.Collect(t, f, 99)
 	var perr *wsconn.PermanentError
 	if !errors.As(err, &perr) || !strings.Contains(err.Error(), "invalid subscription type") {
 		t.Fatalf("Run() = %v, want a permanent error with the node's message", err)
@@ -310,8 +269,8 @@ func TestFeedStopsOnWrongChain(t *testing.T) {
 		_ = conn.WriteMessage(websocket.TextMessage, []byte(block))
 		wstest.DrainUntilClosed(conn)
 	})
-	f, _ := New(Config{URL: srv.URL("/subscribe"), Network: "mainnet", Conn: testConn(), Logger: discard()})
-	events, err := run(t, f, 99)
+	f, _ := New(Config{URL: srv.URL("/subscribe"), Network: "mainnet", Conn: feedtest.FastConn(), Logger: slog.New(slog.DiscardHandler)})
+	events, err := feedtest.Collect(t, f, 99)
 	var perr *wsconn.PermanentError
 	if !errors.As(err, &perr) || !strings.Contains(err.Error(), `chain "109"`) {
 		t.Fatalf("Run() = %v, want a permanent chain mismatch", err)
