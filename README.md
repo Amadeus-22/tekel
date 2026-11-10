@@ -84,7 +84,32 @@ feeds block instead of dropping trades ([ADR 0003](docs/adr/0003-backpressure-in
 Package responsibilities and failure modes are in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Quick start
+## Try it in one minute
+
+No Go and no clone needed. With Docker:
+
+```sh
+docker run --rm -p 8080:8080 \
+  -e TICKGUARD_BINANCE_SYMBOLS=BTCUSDT,ETHUSDT \
+  -e TICKGUARD_KRAKEN_SYMBOLS=BTC/USD \
+  -v tickguard-data:/var/lib/tickguard \
+  ghcr.io/amadeus-22/tickguard:0.1.0
+```
+
+Then, in another terminal:
+
+```sh
+curl -s localhost:8080/v1/streams | jq      # live state of every stream
+curl -s localhost:8080/v1/incidents | jq    # every data-quality incident so far
+```
+
+Or download a binary for Linux or macOS (amd64 and arm64) from
+[Releases](https://github.com/Amadeus-22/tickguard/releases), check it against
+`checksums.txt` and run `./tickguard` with the same environment variables.
+All settings are listed in [.env.example](.env.example). No exchange account or
+API key is needed: every feed is public.
+
+## Quick start (from source)
 
 Requires Go 1.24+ (the toolchain is fetched automatically) or Docker.
 

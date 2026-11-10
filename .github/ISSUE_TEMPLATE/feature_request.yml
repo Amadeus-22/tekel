@@ -1,0 +1,18 @@
+name: Feature or new exchange
+description: Propose a change before building it
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: Who has it and what it costs them today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What you would build. For a new exchange, link its public trade feed docs and say whether trade ids are sequential.
+    validations:
+      required: true

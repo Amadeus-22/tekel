@@ -1,0 +1,31 @@
+name: Bug report
+description: Something tickguard does wrong
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: Exchange, symbols, environment variables (no secrets) and the steps.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or incidents
+      description: Relevant log lines or `GET /v1/incidents` output.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release tag, image tag or commit.
+    validations:
+      required: true

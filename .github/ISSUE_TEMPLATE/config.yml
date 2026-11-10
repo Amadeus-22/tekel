@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Good first issues
+    url: https://github.com/Amadeus-22/tickguard/issues?q=is%3Aopen+label%3A%22good+first+issue%22
+    about: Small, scoped tasks to start contributing.
