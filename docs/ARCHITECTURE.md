@@ -90,7 +90,7 @@ flowchart LR
 | `internal/adapter/leanfs` | `BarSink` writing LEAN zips atomically (temp file + rename), continues a day after restart; `Source` (read-only `LeanSource` over a folder or one zip) |
 | `internal/adapter/auditreport` | renders an `AuditReport` as a table or JSON; golden fixtures trimmed from LEAN samples in `testdata/` |
 | `internal/adapter/httpapi` | `/v1/streams`, `/v1/incidents`, `/healthz`, `/readyz`, `/metrics` |
-| `internal/platform/config` | environment variables → validated `Config` |
+| `internal/platform/config` | environment variables → validated `Config` (one `Feed` per source, `Feeds()` in a fixed order; stale overrides keyed by `domain.StreamKey`) |
 | `internal/platform/logging` | `slog` JSON logger |
 | `internal/platform/metrics` | Prometheus registry; implements `app.Metrics` |
 

@@ -10,10 +10,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Amadeus-22/tickguard/internal/domain"
 )
 
-// Config is the validated process configuration. It holds plain values only;
-// cmd/tickguard maps them onto the packages that use them.
+// Config is the validated process configuration. It holds plain values (and
+// domain stream keys); cmd/tickguard maps them onto the packages that use them.
 type Config struct {
 	HTTPAddr        string
 	LogLevel        string
@@ -34,8 +36,8 @@ type Config struct {
 	ClockSkew           time.Duration
 	OutOfOrderTolerance time.Duration
 	StaleAfter          time.Duration
-	// StaleAfterOverrides maps "exchange:SYMBOL" to a per-stream stale threshold.
-	StaleAfterOverrides map[string]time.Duration
+	// StaleAfterOverrides holds per-stream stale thresholds.
+	StaleAfterOverrides map[domain.StreamKey]time.Duration
 	DuplicateWindow     int
 	SpikeWindow         int
 	SpikeK              float64
@@ -194,8 +196,8 @@ func (p *parser) float(key string, def float64) float64 {
 }
 
 // overrides parses "binance:BTCUSDT=10s,kraken:ETH/USD=5m".
-func (p *parser) overrides(key string) map[string]time.Duration {
-	out := map[string]time.Duration{}
+func (p *parser) overrides(key string) map[domain.StreamKey]time.Duration {
+	out := map[domain.StreamKey]time.Duration{}
 	v, ok := p.lookup(key)
 	if !ok {
 		return out
@@ -212,7 +214,7 @@ func (p *parser) overrides(key string) map[string]time.Duration {
 			p.fail("%s: want exchange:SYMBOL=duration, got %q", key, item)
 			continue
 		}
-		out[exchange+":"+symbol] = d
+		out[domain.StreamKey{Exchange: exchange, Symbol: symbol}] = d
 	}
 	return out
 }

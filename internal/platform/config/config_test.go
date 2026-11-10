@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Amadeus-22/tickguard/internal/domain"
 )
 
 func env(m map[string]string) Lookup {
@@ -53,7 +55,9 @@ func TestOverridesFromEnv(t *testing.T) {
 	if strings.Join(c.Binance.Symbols, ",") != "BTCUSDT,SOLUSDT" || len(c.Kraken.Symbols) != 0 {
 		t.Errorf("symbols = %q %q", c.Binance.Symbols, c.Kraken.Symbols)
 	}
-	if c.StaleAfterOverrides["binance:SOLUSDT"] != 5*time.Minute || c.StaleAfterOverrides["kraken:ETH/USD"] != 90*time.Second {
+	sol := domain.StreamKey{Exchange: "binance", Symbol: "SOLUSDT"}
+	eth := domain.StreamKey{Exchange: "kraken", Symbol: "ETH/USD"}
+	if c.StaleAfterOverrides[sol] != 5*time.Minute || c.StaleAfterOverrides[eth] != 90*time.Second {
 		t.Errorf("overrides = %v", c.StaleAfterOverrides)
 	}
 }

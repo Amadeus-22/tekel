@@ -16,7 +16,6 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -29,7 +28,6 @@ import (
 	"github.com/Amadeus-22/tickguard/internal/adapter/sqlite"
 	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
 	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
 	"github.com/Amadeus-22/tickguard/internal/platform/config"
 	"github.com/Amadeus-22/tickguard/internal/platform/logging"
 	"github.com/Amadeus-22/tickguard/internal/platform/metrics"
@@ -164,10 +162,6 @@ func pipelineConfig(cfg config.Config) app.Config {
 	q.SpikeMinDeviation = cfg.SpikeMinDeviation
 	pc.Buffer = cfg.Buffer
 	pc.BarGrace = cfg.BarGrace
-	pc.StaleAfter = make(map[domain.StreamKey]time.Duration, len(cfg.StaleAfterOverrides))
-	for stream, d := range cfg.StaleAfterOverrides {
-		exchange, symbol, _ := strings.Cut(stream, ":")
-		pc.StaleAfter[domain.StreamKey{Exchange: exchange, Symbol: symbol}] = d
-	}
+	pc.StaleAfter = cfg.StaleAfterOverrides
 	return pc
 }
