@@ -146,9 +146,6 @@ func TestFeedRunAgainstLocalServer(t *testing.T) {
 	emit := func(_ context.Context, ev app.Event) error {
 		mu.Lock()
 		defer mu.Unlock()
-		if ev.Exchange != "binance" {
-			t.Errorf("event exchange = %q", ev.Exchange)
-		}
 		kinds = append(kinds, ev.Kind)
 		if len(kinds) == 5 { // up, trade, down, up, trade
 			close(enough)

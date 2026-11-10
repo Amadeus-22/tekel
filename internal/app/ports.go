@@ -27,7 +27,8 @@ const (
 
 // Event is what a Feed emits. Connection events apply to every symbol of the feed.
 type Event struct {
-	Kind     EventKind
+	Kind EventKind
+	// Exchange is set by the pipeline from Feed.Exchange; feeds leave it empty.
 	Exchange string
 	// At is when the event happened on tickguard's clock.
 	At    time.Time

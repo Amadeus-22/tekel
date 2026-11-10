@@ -142,7 +142,6 @@ func NewSubscribeRequest(symbol string) SubscribeRequest {
 
 // Run implements app.Feed.
 func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
-	ex := Exchange
 	return wsconn.Run(ctx, f.cfg.Conn, wsconn.Handlers{
 		Subscribe: func(_ context.Context, conn *websocket.Conn) error {
 			for _, s := range f.cfg.Symbols {
@@ -153,10 +152,10 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 			return nil
 		},
 		Up: func(ctx context.Context, at time.Time) error {
-			return emit(ctx, app.Event{Kind: app.EventConnected, Exchange: ex, At: at})
+			return emit(ctx, app.Event{Kind: app.EventConnected, At: at})
 		},
 		Down: func(ctx context.Context, at time.Time, cause error) error {
-			return emit(ctx, app.Event{Kind: app.EventDisconnected, Exchange: ex, At: at, Err: cause})
+			return emit(ctx, app.Event{Kind: app.EventDisconnected, At: at, Err: cause})
 		},
 		Message: func(ctx context.Context, msg []byte, received time.Time) error {
 			m, err := Decode(msg, received, f.ids)
@@ -174,7 +173,7 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 			if m.Trade == nil {
 				return nil
 			}
-			return emit(ctx, app.Event{Kind: app.EventTrade, Exchange: ex, At: received, Trade: *m.Trade})
+			return emit(ctx, app.Event{Kind: app.EventTrade, At: received, Trade: *m.Trade})
 		},
 	})
 }

@@ -129,16 +129,15 @@ func NewSubscribeRequest() SubscribeRequest {
 
 // Run implements app.Feed.
 func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
-	ch := Chain
 	return wsconn.Run(ctx, f.cfg.Conn, wsconn.Handlers{
 		Subscribe: func(_ context.Context, conn *websocket.Conn) error {
 			return conn.WriteJSON(NewSubscribeRequest())
 		},
 		Up: func(ctx context.Context, at time.Time) error {
-			return emit(ctx, app.Event{Kind: app.EventConnected, Exchange: ch, At: at})
+			return emit(ctx, app.Event{Kind: app.EventConnected, At: at})
 		},
 		Down: func(ctx context.Context, at time.Time, cause error) error {
-			return emit(ctx, app.Event{Kind: app.EventDisconnected, Exchange: ch, At: at, Err: cause})
+			return emit(ctx, app.Event{Kind: app.EventDisconnected, At: at, Err: cause})
 		},
 		Message: func(ctx context.Context, msg []byte, received time.Time) error {
 			m, err := Decode(msg, received, f.cfg.Network)
@@ -158,7 +157,7 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 				return wsconn.Permanent(fmt.Errorf("node %s serves chain %q, but %s is chain %q",
 					f.cfg.URL, m.ChainID, f.cfg.Network, f.chainID))
 			}
-			return emit(ctx, app.Event{Kind: app.EventBlock, Exchange: ch, At: received, Block: *m.Block})
+			return emit(ctx, app.Event{Kind: app.EventBlock, At: received, Block: *m.Block})
 		},
 	})
 }

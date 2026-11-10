@@ -176,11 +176,13 @@ func (p *Pipeline) Run(ctx context.Context) error {
 	return err
 }
 
-// emitter returns the Emit function for one feed. A send that finds the buffer
+// emitter returns the Emit function for one feed. It stamps every event with
+// the feed's exchange, so feeds do not have to. A send that finds the buffer
 // full blocks, and the time spent blocked is reported as backpressure: tickguard
 // never drops a trade to keep up (docs/adr/0003).
 func (p *Pipeline) emitter(events chan<- Event, exchange string) Emit {
 	return func(ctx context.Context, ev Event) error {
+		ev.Exchange = exchange
 		select {
 		case events <- ev:
 			return nil

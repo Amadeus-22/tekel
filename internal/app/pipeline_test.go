@@ -319,6 +319,26 @@ func TestPipelineBlockStream(t *testing.T) {
 	}
 }
 
+// TestPipelineStampsExchange: feeds leave Event.Exchange empty; the pipeline
+// fills it in from Feed.Exchange, so connection events reach the feed's streams.
+func TestPipelineStampsExchange(t *testing.T) {
+	up := connEv(EventConnected, 0)
+	up.Exchange = ""
+	trade := tradeEv(1, time.Second, "100")
+	trade.Exchange = ""
+	f := newFakeFeed(ex, []string{sym}, up, trade)
+	h := newHarness(t, testConfig(), f)
+	runUntilEmitted(t, h, f)
+
+	s := h.p.Streams()[0]
+	if !s.Connected || s.Trades != 1 {
+		t.Errorf("status = %+v, want connected with one trade", s)
+	}
+	if !h.metrics.connected[ex] {
+		t.Errorf("connected metric = %v, want %s up", h.metrics.connected, ex)
+	}
+}
+
 func TestStreamsSnapshotIsACopy(t *testing.T) {
 	f := newFakeFeed(ex, []string{"ETHUSDT", sym}, connEv(EventConnected, 0))
 	f2 := newFakeFeed("kraken", []string{"BTC/USD"})

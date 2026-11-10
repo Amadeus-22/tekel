@@ -94,10 +94,10 @@ func (f *Feed) Kind() domain.StreamKind { return domain.StreamTrades }
 func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 	return wsconn.Run(ctx, f.cfg.Conn, wsconn.Handlers{
 		Up: func(ctx context.Context, at time.Time) error {
-			return emit(ctx, app.Event{Kind: app.EventConnected, Exchange: Exchange, At: at})
+			return emit(ctx, app.Event{Kind: app.EventConnected, At: at})
 		},
 		Down: func(ctx context.Context, at time.Time, cause error) error {
-			return emit(ctx, app.Event{Kind: app.EventDisconnected, Exchange: Exchange, At: at, Err: cause})
+			return emit(ctx, app.Event{Kind: app.EventDisconnected, At: at, Err: cause})
 		},
 		Message: func(ctx context.Context, msg []byte, received time.Time) error {
 			t, ok, err := Decode(msg, received)
@@ -108,7 +108,7 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 			if !ok {
 				return nil
 			}
-			return emit(ctx, app.Event{Kind: app.EventTrade, Exchange: Exchange, At: received, Trade: t})
+			return emit(ctx, app.Event{Kind: app.EventTrade, At: received, Trade: t})
 		},
 	})
 }
