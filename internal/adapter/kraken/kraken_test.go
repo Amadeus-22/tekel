@@ -98,14 +98,17 @@ func TestSubscribeRequestShape(t *testing.T) {
 func discard() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
 
 func TestNewValidates(t *testing.T) {
-	for name, cfg := range map[string]Config{
-		"no symbols": {Logger: discard()},
-		"no slash":   {Symbols: []string{"BTCUSD"}, Logger: discard()},
-		"lowercase":  {Symbols: []string{"btc/usd"}, Logger: discard()},
-		"no logger":  {Symbols: []string{"BTC/USD"}},
+	for name, tt := range map[string]struct {
+		cfg  Config
+		want string
+	}{
+		"no symbols": {Config{Logger: discard()}, "kraken: at least one symbol is required"},
+		"no slash":   {Config{Symbols: []string{"BTCUSD"}, Logger: discard()}, `kraken: symbol "BTCUSD" must look like BTC/USD`},
+		"lowercase":  {Config{Symbols: []string{"btc/usd"}, Logger: discard()}, `kraken: symbol "btc/usd" must look like BTC/USD`},
+		"no logger":  {Config{Symbols: []string{"BTC/USD"}}, "kraken: logger is required"},
 	} {
-		if _, err := New(cfg); err == nil {
-			t.Errorf("%s: New() = nil error", name)
+		if _, err := New(tt.cfg); err == nil || err.Error() != tt.want {
+			t.Errorf("%s: New() = %v, want %q", name, err, tt.want)
 		}
 	}
 	f, err := New(Config{URL: DefaultURL, Symbols: []string{"BTC/USD"}, Logger: discard(), Conn: wsconn.DefaultConfig()})

@@ -115,15 +115,21 @@ func TestSubscribeRequestShape(t *testing.T) {
 func discard() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
 
 func TestNewValidates(t *testing.T) {
-	for name, cfg := range map[string]Config{
-		"no symbols":    {Logger: discard()},
-		"no dash":       {Symbols: []string{"BTCBRL"}, Logger: discard()},
-		"lowercase":     {Symbols: []string{"btc-brl"}, Logger: discard()},
-		"ws id spelled": {Symbols: []string{"BRLBTC"}, Logger: discard()},
-		"no logger":     {Symbols: []string{"BTC-BRL"}},
+	for name, tt := range map[string]struct {
+		cfg  Config
+		want string
+	}{
+		"no symbols": {Config{Logger: discard()}, "mercadobitcoin: at least one symbol is required"},
+		"no dash": {Config{Symbols: []string{"BTCBRL"}, Logger: discard()},
+			`mercadobitcoin: symbol "BTCBRL" must look like BTC-BRL`},
+		"lowercase": {Config{Symbols: []string{"btc-brl"}, Logger: discard()},
+			`mercadobitcoin: symbol "btc-brl" must look like BTC-BRL`},
+		"ws id spelled": {Config{Symbols: []string{"BRLBTC"}, Logger: discard()},
+			`mercadobitcoin: symbol "BRLBTC" must look like BTC-BRL`},
+		"no logger": {Config{Symbols: []string{"BTC-BRL"}}, "mercadobitcoin: logger is required"},
 	} {
-		if _, err := New(cfg); err == nil {
-			t.Errorf("%s: New() = nil error", name)
+		if _, err := New(tt.cfg); err == nil || err.Error() != tt.want {
+			t.Errorf("%s: New() = %v, want %q", name, err, tt.want)
 		}
 	}
 	f, err := New(Config{URL: DefaultURL, Symbols: []string{"BTC-BRL"}, Logger: discard(), Conn: wsconn.DefaultConfig()})

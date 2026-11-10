@@ -97,15 +97,18 @@ func TestNewValidates(t *testing.T) {
 	tests := []struct {
 		name string
 		cfg  Config
+		want string
 	}{
-		{"no symbols", Config{Logger: discard()}},
-		{"lowercase symbol", Config{Symbols: []string{"btcusdt"}, Logger: discard()}},
-		{"slash symbol", Config{Symbols: []string{"BTC/USDT"}, Logger: discard()}},
-		{"no logger", Config{Symbols: []string{"BTCUSDT"}}},
+		{"no symbols", Config{Logger: discard()}, "binance: at least one symbol is required"},
+		{"lowercase symbol", Config{Symbols: []string{"btcusdt"}, Logger: discard()},
+			`binance: symbol "btcusdt" must be uppercase letters and digits, e.g. BTCUSDT`},
+		{"slash symbol", Config{Symbols: []string{"BTC/USDT"}, Logger: discard()},
+			`binance: symbol "BTC/USDT" must be uppercase letters and digits, e.g. BTCUSDT`},
+		{"no logger", Config{Symbols: []string{"BTCUSDT"}}, "binance: logger is required"},
 	}
 	for _, tt := range tests {
-		if _, err := New(tt.cfg); err == nil {
-			t.Errorf("%s: New() = nil error", tt.name)
+		if _, err := New(tt.cfg); err == nil || err.Error() != tt.want {
+			t.Errorf("%s: New() = %v, want %q", tt.name, err, tt.want)
 		}
 	}
 	f, err := New(Config{Symbols: []string{"BTCUSDT"}, Logger: discard(), BaseURL: DefaultBaseURL})
