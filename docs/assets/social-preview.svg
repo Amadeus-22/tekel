@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <rect width="1280" height="640" fill="#0B1220"/>
+  <g transform="translate(90 150) scale(0.66)">
+    <path d="M256 56 L424 116 V244 C424 350 352 430 256 464 C160 430 88 350 88 244 V116 Z" fill="#111B2E" stroke="#22D3A6" stroke-width="22" stroke-linejoin="round"/>
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="26">
+      <path d="M140 300 L184 252 L200 266" stroke="#22D3A6"/><path d="M222 252 L250 228" stroke="#F5B841" stroke-width="18" stroke-dasharray="0 18.4"/><path d="M270 214 L290 236 L322 290 L384 182" stroke="#22D3A6"/>
+      
+      
+    </g>
+  </g>
+  <text x="470" y="275" font-family="DejaVu Sans" font-weight="bold" font-size="104" fill="#F3F6FA">tickguard</text>
+  <text x="474" y="340" font-family="DejaVu Sans" font-size="31" fill="#B8C4D6">Validates crypto trade feeds in real time</text>
+  <text x="474" y="384" font-family="DejaVu Sans" font-size="31" fill="#B8C4D6">and tells <tspan fill="#22D3A6">known gaps</tspan> from <tspan fill="#F5B841">silent ones</tspan>.</text>
+  <text x="474" y="458" font-family="DejaVu Sans Mono" font-size="24" fill="#7F8DA3">Go · Binance · Kraken · Mercado Bitcoin · LEAN</text>
+  <text x="474" y="540" font-family="DejaVu Sans Mono" font-size="24" fill="#22D3A6">github.com/Amadeus-22/tickguard</text>
+</svg>
