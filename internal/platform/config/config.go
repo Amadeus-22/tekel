@@ -72,7 +72,7 @@ func FromEnv() (Config, error) { return Load(os.LookupEnv) }
 func Load(lookup Lookup) (Config, error) {
 	p := parser{lookup: lookup}
 	c := Config{
-		HTTPAddr:        p.str("TICKGUARD_HTTP_ADDR", ":8080"),
+		HTTPAddr:        p.str("TICKGUARD_HTTP_ADDR", "127.0.0.1:8080"),
 		LogLevel:        p.str("TICKGUARD_LOG_LEVEL", "info"),
 		DataDir:         p.str("TICKGUARD_DATA_DIR", "./data"),
 		DBPath:          p.str("TICKGUARD_DB_PATH", "./tickguard.db"),

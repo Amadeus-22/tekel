@@ -20,7 +20,7 @@ func TestDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.HTTPAddr != ":8080" || c.LogLevel != "info" || c.DataDir != "./data" || c.DBPath != "./tickguard.db" {
+	if c.HTTPAddr != "127.0.0.1:8080" || c.LogLevel != "info" || c.DataDir != "./data" || c.DBPath != "./tickguard.db" {
 		t.Errorf("basic defaults = %+v", c)
 	}
 	if strings.Join(c.Binance.Symbols, ",") != "BTCUSDT,ETHUSDT" || strings.Join(c.Kraken.Symbols, ",") != "BTC/USD,ETH/USD" {

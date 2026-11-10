@@ -16,6 +16,8 @@ RUN go build -trimpath -ldflags="-s -w" -o /out/tickguard ./cmd/tickguard \
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/tickguard /usr/local/bin/tickguard
 COPY --from=build --chown=65532:65532 /out/var/lib/tickguard /var/lib/tickguard
+# The binary listens on 127.0.0.1 by default; in a container that would be
+# unreachable, so the image listens on every interface.
 ENV TICKGUARD_HTTP_ADDR=:8080 \
     TICKGUARD_DATA_DIR=/var/lib/tickguard/data \
     TICKGUARD_DB_PATH=/var/lib/tickguard/tickguard.db

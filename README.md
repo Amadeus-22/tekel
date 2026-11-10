@@ -257,7 +257,7 @@ once. Durations use Go syntax (`500ms`, `30s`, `5m`).
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `TICKGUARD_HTTP_ADDR` | `:8080` | HTTP listen address |
+| `TICKGUARD_HTTP_ADDR` | `127.0.0.1:8080` | HTTP listen address (the Docker image sets `:8080`) |
 | `TICKGUARD_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `TICKGUARD_DATA_DIR` | `./data` | LEAN data folder; bars go under `crypto/` |
 | `TICKGUARD_DB_PATH` | `./tickguard.db` | SQLite incident database |
