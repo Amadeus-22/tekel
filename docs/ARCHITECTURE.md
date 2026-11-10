@@ -68,14 +68,15 @@ flowchart LR
 | Package | Responsibility |
 |---|---|
 | `cmd/tickguard` | wiring, signal handling, maps `platform/config` onto the packages below; `audit` subcommand (`audit.go`) |
-| `internal/domain` | `Trade`, `Incident`, `Bar`, exact `Decimal`, sentinel errors |
-| `internal/domain/quality` | validators and per-stream state (`Stream`), `SpikeRule`/`SpikeWindow` shared with audit; pure |
+| `internal/domain` | `Trade`, `Block` (chain block), `StreamKind`, `Incident`, `Bar`, exact `Decimal`, sentinel errors |
+| `internal/domain/quality` | validators and per-stream state (`Stream`; `NewBlockStream` runs the same rules over block nonces, without the price check), `SpikeRule`/`SpikeWindow` shared with audit; pure |
 | `internal/domain/audit` | LEAN path recognition, row parsers and audit checks (`Checker`, `CheckDays`); pure |
 | `internal/domain/bars` | minute bar aggregation (`Aggregator`) and `Merge`; pure |
-| `internal/app` | `Pipeline`: fan-in of feeds, runs validators, routes to sinks, serves stream status; ports `Feed`, `IncidentStore`, `BarSink`, `Metrics`. `Audit`: runs the audit over a `LeanSource`, builds `AuditReport` |
+| `internal/app` | `Pipeline`: fan-in of feeds, runs validators, routes trades to sinks (blocks only to incidents), serves stream status; ports `Feed` (declares its `StreamKind`), `IncidentStore`, `BarSink`, `Metrics`. `Audit`: runs the audit over a `LeanSource`, builds `AuditReport` |
 | `internal/adapter/binance` | combined-stream `@trade` client, message decoding |
 | `internal/adapter/kraken` | WS v2 client, `trade` subscribe, decoding, rejects bad symbols as permanent errors |
 | `internal/adapter/mercadobitcoin` | WS client, one `trade` subscribe per market, `{"type":"ping"}` keepalive, decoding, server errors are permanent |
+| `internal/adapter/klever` | KleverChain block feed: node `/subscribe` WebSocket, `blocks` subscription, decoding, chain ID check; node errors and a wrong chain are permanent |
 | `internal/adapter/wsconn` | shared reconnect loop with jittered backoff (cap 30s), ping/pong or application ping, handshake header, read deadline; `Malformed` (counts every undecodable message, logs one sample per minute) |
 | `internal/adapter/wsconn/wstest` | local WebSocket test server (test helper, like `httptest`) |
 | `internal/adapter/sqlite` | `IncidentStore` + incident query, schema, readiness ping |

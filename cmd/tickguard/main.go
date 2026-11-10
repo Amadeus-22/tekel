@@ -22,6 +22,7 @@ import (
 
 	"github.com/Amadeus-22/tickguard/internal/adapter/binance"
 	"github.com/Amadeus-22/tickguard/internal/adapter/httpapi"
+	"github.com/Amadeus-22/tickguard/internal/adapter/klever"
 	"github.com/Amadeus-22/tickguard/internal/adapter/kraken"
 	"github.com/Amadeus-22/tickguard/internal/adapter/leanfs"
 	"github.com/Amadeus-22/tickguard/internal/adapter/mercadobitcoin"
@@ -104,7 +105,7 @@ func run() error {
 
 	log.Info("tickguard started", "http_addr", cfg.HTTPAddr, "data_dir", cfg.DataDir, "db_path", cfg.DBPath,
 		"binance_symbols", strings.Join(cfg.BinanceSymbols, ","), "kraken_symbols", strings.Join(cfg.KrakenSymbols, ","),
-		"mercadobitcoin_symbols", strings.Join(cfg.MercadoBitcoinSymbols, ","))
+		"mercadobitcoin_symbols", strings.Join(cfg.MercadoBitcoinSymbols, ","), "klever_network", cfg.KleverNetwork)
 	err = g.Wait()
 	log.Info("tickguard stopped", "error", fmt.Sprint(err))
 	return err
@@ -136,6 +137,16 @@ func buildFeeds(cfg config.Config, log *slog.Logger, m *metrics.Metrics) ([]app.
 		f, err := mercadobitcoin.New(mercadobitcoin.Config{
 			URL: cfg.MercadoBitcoinURL, Symbols: cfg.MercadoBitcoinSymbols, Conn: wsconn.DefaultConfig(), Logger: log,
 			DecodeErrors: func() { m.DecodeError(domain.ExchangeMercadoBitcoin) },
+		})
+		if err != nil {
+			return nil, err
+		}
+		feeds = append(feeds, f)
+	}
+	if cfg.KleverNetwork != "" {
+		f, err := klever.New(klever.Config{
+			URL: cfg.KleverURL, Network: cfg.KleverNetwork, Conn: wsconn.DefaultConfig(), Logger: log,
+			DecodeErrors: func() { m.DecodeError(domain.ChainKlever) },
 		})
 		if err != nil {
 			return nil, err
