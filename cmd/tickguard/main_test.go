@@ -2,10 +2,15 @@ package main
 
 import (
 	"log/slog"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Amadeus-22/tickguard/internal/adapter/binance"
+	"github.com/Amadeus-22/tickguard/internal/adapter/kraken"
+	"github.com/Amadeus-22/tickguard/internal/adapter/mercadobitcoin"
+	"github.com/Amadeus-22/tickguard/internal/app"
 	"github.com/Amadeus-22/tickguard/internal/domain"
 	"github.com/Amadeus-22/tickguard/internal/platform/config"
 	"github.com/Amadeus-22/tickguard/internal/platform/metrics"
@@ -102,5 +107,32 @@ func TestBuildFeedsOrder(t *testing.T) {
 	}
 	if want := "binance kraken mercadobitcoin klever"; strings.Join(got, " ") != want {
 		t.Errorf("feeds = %v, want %s", got, want)
+	}
+}
+
+// TestConfigDefaultsMatchPackageDefaults guards against drift: an unset
+// environment must give exactly the defaults the packages themselves declare.
+func TestConfigDefaultsMatchPackageDefaults(t *testing.T) {
+	cfg, err := config.Load(func(string) (string, bool) { return "", false })
+	if err != nil {
+		t.Fatal(err)
+	}
+	pc := pipelineConfig(cfg)
+	if len(pc.StaleAfter) != 0 {
+		t.Errorf("default stale overrides = %v", pc.StaleAfter)
+	}
+	pc.StaleAfter = nil
+	if want := app.DefaultConfig(); !reflect.DeepEqual(pc, want) {
+		t.Errorf("pipeline config from defaults =\n%+v\nwant app.DefaultConfig() =\n%+v", pc, want)
+	}
+	for _, tt := range []struct{ name, got, want string }{
+		{"binance", cfg.Binance.URL, binance.DefaultBaseURL},
+		{"kraken", cfg.Kraken.URL, kraken.DefaultURL},
+		{"mercadobitcoin", cfg.MercadoBitcoin.URL, mercadobitcoin.DefaultURL},
+		{"klever", cfg.Klever.URL, ""}, // empty: klever.New picks klever.TestnetURL
+	} {
+		if tt.got != tt.want {
+			t.Errorf("%s default URL = %q, want %q", tt.name, tt.got, tt.want)
+		}
 	}
 }
