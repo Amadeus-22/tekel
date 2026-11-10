@@ -4,19 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"log/slog"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/gorilla/websocket"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
-	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn/wstest"
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/adapter/feedtest"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsconn/wstest"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 // Examples from https://ws.mercadobitcoin.net/docs/v0/ (PublicMessages, GeneralMessages, Errors).
@@ -27,7 +27,7 @@ const (
 	docError = `{"type":"error","message":"already subscribed"}`
 )
 
-// Recorded from wss://ws.mercadobitcoin.net/ws on 2026-09-29 (tickguard probe).
+// Recorded from wss://ws.mercadobitcoin.net/ws on 2026-09-29 (Tekel probe).
 const (
 	liveTradeBTC   = `{"type":"trade","id":"BRLBTC","ts":1790720762225295243,"data":{"tid":22586953,"date":1790720762,"type":"buy","price":435832,"amount":0.00000222}}`
 	liveTradeBTC2  = `{"type":"trade","id":"BRLBTC","ts":1790720762262275368,"data":{"tid":22586954,"date":1790720762,"type":"sell","price":435837,"amount":0.00003}}`
@@ -112,21 +112,26 @@ func TestSubscribeRequestShape(t *testing.T) {
 	}
 }
 
-func discard() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
-
 func TestNewValidates(t *testing.T) {
-	for name, cfg := range map[string]Config{
-		"no symbols":    {Logger: discard()},
-		"no dash":       {Symbols: []string{"BTCBRL"}, Logger: discard()},
-		"lowercase":     {Symbols: []string{"btc-brl"}, Logger: discard()},
-		"ws id spelled": {Symbols: []string{"BRLBTC"}, Logger: discard()},
-		"no logger":     {Symbols: []string{"BTC-BRL"}},
+	log := slog.New(slog.DiscardHandler)
+	for name, tt := range map[string]struct {
+		cfg  Config
+		want string
+	}{
+		"no symbols": {Config{Logger: log}, "mercadobitcoin: at least one symbol is required"},
+		"no dash": {Config{Symbols: []string{"BTCBRL"}, Logger: log},
+			`mercadobitcoin: symbol "BTCBRL" must look like BTC-BRL`},
+		"lowercase": {Config{Symbols: []string{"btc-brl"}, Logger: log},
+			`mercadobitcoin: symbol "btc-brl" must look like BTC-BRL`},
+		"ws id spelled": {Config{Symbols: []string{"BRLBTC"}, Logger: log},
+			`mercadobitcoin: symbol "BRLBTC" must look like BTC-BRL`},
+		"no logger": {Config{Symbols: []string{"BTC-BRL"}}, "mercadobitcoin: logger is required"},
 	} {
-		if _, err := New(cfg); err == nil {
-			t.Errorf("%s: New() = nil error", name)
+		if _, err := New(tt.cfg); err == nil || err.Error() != tt.want {
+			t.Errorf("%s: New() = %v, want %q", name, err, tt.want)
 		}
 	}
-	f, err := New(Config{URL: DefaultURL, Symbols: []string{"BTC-BRL"}, Logger: discard(), Conn: wsconn.DefaultConfig()})
+	f, err := New(Config{URL: DefaultURL, Symbols: []string{"BTC-BRL"}, Logger: log, Conn: wsconn.DefaultConfig()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,20 +142,11 @@ func TestNewValidates(t *testing.T) {
 	}
 }
 
-func testConn() wsconn.Config {
-	c := wsconn.DefaultConfig()
-	c.BackoffMin, c.BackoffMax = time.Millisecond, 5*time.Millisecond
-	return c
-}
-
 // TestFeedEndToEnd runs the feed against a local server that behaves like the
 // production one: it acknowledges each subscription, answers pings and streams
 // recorded trades; the first connection is dropped to exercise resubscription.
 func TestFeedEndToEnd(t *testing.T) {
 	subs := make(chan string, 8)
-	var pings sync.WaitGroup
-	pings.Add(1)
-	var pingOnce sync.Once
 	srv := wstest.NewServer(t, func(n int, conn *websocket.Conn) {
 		for range 2 { // one subscribe per symbol
 			_, msg, err := conn.ReadMessage()
@@ -168,67 +164,42 @@ func TestFeedEndToEnd(t *testing.T) {
 		if n == 1 {
 			return
 		}
-		_ = conn.WriteMessage(websocket.TextMessage, []byte(liveTradeBTC2))
+		// The next trade goes out only after the first application ping, so
+		// receiving it proves the ping reached the server.
+		pinged := false
 		for {
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
 				return
 			}
 			if string(msg) == `{"type":"ping"}` {
-				pingOnce.Do(pings.Done)
 				_ = conn.WriteMessage(websocket.TextMessage, []byte(docPong))
+				if !pinged {
+					pinged = true
+					_ = conn.WriteMessage(websocket.TextMessage, []byte(liveTradeBTC2))
+				}
 			}
 		}
 	})
 
-	var mu sync.Mutex
-	decodeErrors := 0
-	f, err := New(Config{URL: srv.URL("/ws"), Symbols: []string{"BTC-BRL", "USDT-BRL"}, Conn: testConn(), Logger: discard(),
-		DecodeErrors: func() { mu.Lock(); decodeErrors++; mu.Unlock() }})
+	var decodeErrors atomic.Int32
+	f, err := New(Config{URL: srv.URL("/ws"), Symbols: []string{"BTC-BRL", "USDT-BRL"}, Conn: feedtest.FastConn(),
+		Logger: slog.New(slog.DiscardHandler), DecodeErrors: func() { decodeErrors.Add(1) }})
 	if err != nil {
 		t.Fatal(err)
 	}
 	f.cfg.Conn.PingInterval = 20 * time.Millisecond
 
-	var events []app.Event
-	enough := make(chan struct{})
-	emit := func(_ context.Context, ev app.Event) error {
-		mu.Lock()
-		defer mu.Unlock()
-		events = append(events, ev)
-		if len(events) == 7 {
-			close(enough)
-		}
-		return nil
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan error, 1)
-	go func() { done <- f.Run(ctx, emit) }()
-	select {
-	case <-enough:
-	case <-time.After(5 * time.Second):
-		t.Fatal("did not receive the expected events")
-	}
-	pingDone := make(chan struct{})
-	go func() { pings.Wait(); close(pingDone) }()
-	select {
-	case <-pingDone:
-	case <-time.After(5 * time.Second):
-		t.Fatal("no application ping reached the server")
-	}
-	cancel()
-	if err := <-done; err != nil {
+	events, err := feedtest.Collect(t, f, 8)
+	if err != nil {
 		t.Fatalf("Run() = %v", err)
 	}
-
 	for i := range 4 {
 		got := <-subs
 		if want := []string{"BRLBTC", "BRLUSDT"}[i%2]; !strings.Contains(got, `"id":"`+want+`"`) || !strings.Contains(got, `"name":"trade"`) {
 			t.Errorf("subscribe %d = %s", i+1, got)
 		}
 	}
-	mu.Lock()
-	defer mu.Unlock()
 	var got []string
 	for _, ev := range events {
 		switch ev.Kind {
@@ -240,12 +211,15 @@ func TestFeedEndToEnd(t *testing.T) {
 			got = append(got, "down")
 		}
 	}
-	want := "up BTC-BRL USDT-BRL down up BTC-BRL USDT-BRL" // then the trades after pings, if any arrived yet
-	if len(got) < 7 || strings.Join(got[:7], " ") != want {
+	// The last BTC-BRL trade is the one sent after the first ping.
+	if want := "up BTC-BRL USDT-BRL down up BTC-BRL USDT-BRL BTC-BRL"; strings.Join(got, " ") != want {
 		t.Fatalf("events = %v, want %s", got, want)
 	}
-	if decodeErrors < 2 {
-		t.Errorf("malformed trade counted %d times, want once per connection", decodeErrors)
+	if events[7].Trade.TradeID != 22586954 {
+		t.Errorf("trade after the ping = %+v, want tid 22586954", events[7].Trade)
+	}
+	if decodeErrors.Load() < 2 {
+		t.Errorf("malformed trade counted %d times, want once per connection", decodeErrors.Load())
 	}
 }
 
@@ -255,7 +229,7 @@ func TestFeedStopsOnServerError(t *testing.T) {
 		_ = conn.WriteMessage(websocket.TextMessage, []byte(liveBadPairErr))
 		wstest.DrainUntilClosed(conn)
 	})
-	f, _ := New(Config{URL: srv.URL("/ws"), Symbols: []string{"NOPE-BRL"}, Conn: testConn(), Logger: discard()})
+	f, _ := New(Config{URL: srv.URL("/ws"), Symbols: []string{"NOPE-BRL"}, Conn: feedtest.FastConn(), Logger: slog.New(slog.DiscardHandler)})
 	err := f.Run(context.Background(), func(context.Context, app.Event) error { return nil })
 	var perr *wsconn.PermanentError
 	if !errors.As(err, &perr) || !strings.Contains(err.Error(), "invalid pair to subscribe") || !strings.Contains(err.Error(), "NOPE-BRL") {

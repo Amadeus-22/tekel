@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 var t0 = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
@@ -153,7 +152,7 @@ func (m *fakeMetrics) SinkError(sink string) {
 
 // --- helpers ----------------------------------------------------------------
 
-const ex, sym = domain.ExchangeBinance, "BTCUSDT"
+const ex, sym = "binance", "BTCUSDT"
 
 func tradeEv(id int64, at time.Duration, price string) Event {
 	ts := t0.Add(at)
@@ -179,7 +178,7 @@ func newHarness(t *testing.T, cfg Config, feeds ...Feed) *harness {
 	h := &harness{store: &fakeStore{}, sink: &fakeSink{}, metrics: newFakeMetrics()}
 	p, err := NewPipeline(cfg, Deps{
 		Feeds: feeds, Incidents: h.store, Bars: h.sink, Metrics: h.metrics,
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger: slog.New(slog.DiscardHandler),
 		Now:    func() time.Time { return t0.Add(time.Hour) },
 	})
 	if err != nil {
@@ -279,7 +278,7 @@ func TestPipelineEndToEnd(t *testing.T) {
 // checks, never a bar, and its status says kind=blocks, while a trade feed in the
 // same pipeline is unaffected.
 func TestPipelineBlockStream(t *testing.T) {
-	const chain, network = domain.ChainKlever, "testnet"
+	const chain, network = "klever", "testnet"
 	blockEv := func(nonce int64, at time.Duration) Event {
 		ts := t0.Add(at)
 		return Event{Kind: EventBlock, Exchange: chain, At: ts, Block: domain.Block{
@@ -319,12 +318,32 @@ func TestPipelineBlockStream(t *testing.T) {
 	}
 }
 
+// TestPipelineStampsExchange: feeds leave Event.Exchange empty; the pipeline
+// fills it in from Feed.Exchange, so connection events reach the feed's streams.
+func TestPipelineStampsExchange(t *testing.T) {
+	up := connEv(EventConnected, 0)
+	up.Exchange = ""
+	trade := tradeEv(1, time.Second, "100")
+	trade.Exchange = ""
+	f := newFakeFeed(ex, []string{sym}, up, trade)
+	h := newHarness(t, testConfig(), f)
+	runUntilEmitted(t, h, f)
+
+	s := h.p.Streams()[0]
+	if !s.Connected || s.Trades != 1 {
+		t.Errorf("status = %+v, want connected with one trade", s)
+	}
+	if !h.metrics.connected[ex] {
+		t.Errorf("connected metric = %v, want %s up", h.metrics.connected, ex)
+	}
+}
+
 func TestStreamsSnapshotIsACopy(t *testing.T) {
 	f := newFakeFeed(ex, []string{"ETHUSDT", sym}, connEv(EventConnected, 0))
-	f2 := newFakeFeed(domain.ExchangeKraken, []string{"BTC/USD"})
+	f2 := newFakeFeed("kraken", []string{"BTC/USD"})
 	h := newHarness(t, testConfig(), f, f2)
 	st := h.p.Streams()
-	if len(st) != 3 || st[0].Symbol != "BTCUSDT" || st[1].Symbol != "ETHUSDT" || st[2].Exchange != domain.ExchangeKraken {
+	if len(st) != 3 || st[0].Symbol != "BTCUSDT" || st[1].Symbol != "ETHUSDT" || st[2].Exchange != "kraken" {
 		t.Fatalf("Streams() order = %+v", st)
 	}
 	st[0].Incidents[domain.KindDuplicate] = 99
@@ -463,7 +482,7 @@ func TestPipelineTickFlagsStaleAndFlushesBars(t *testing.T) {
 func TestPipelineFeedFailureStopsRun(t *testing.T) {
 	bad := newFakeFeed(ex, []string{sym})
 	bad.err = errors.New("bad symbol")
-	good := newFakeFeed(domain.ExchangeKraken, []string{"BTC/USD"})
+	good := newFakeFeed("kraken", []string{"BTC/USD"})
 	h := newHarness(t, testConfig(), bad, good)
 	err := h.p.Run(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "feed binance: bad symbol") {
@@ -474,7 +493,7 @@ func TestPipelineFeedFailureStopsRun(t *testing.T) {
 func TestNewPipelineValidates(t *testing.T) {
 	ok := Deps{
 		Feeds: []Feed{newFakeFeed(ex, nil)}, Incidents: &fakeStore{}, Bars: &fakeSink{},
-		Metrics: newFakeMetrics(), Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Metrics: newFakeMetrics(), Logger: slog.New(slog.DiscardHandler),
 	}
 	if _, err := NewPipeline(DefaultConfig(), ok); err != nil {
 		t.Fatalf("valid config rejected: %v", err)
@@ -500,5 +519,30 @@ func TestNewPipelineValidates(t *testing.T) {
 				t.Error("NewPipeline() = nil error")
 			}
 		})
+	}
+}
+
+func TestNewPipelineRejectsUnknownStaleOverride(t *testing.T) {
+	cfg := testConfig()
+	cfg.StaleAfter = map[domain.StreamKey]time.Duration{
+		{Exchange: ex, Symbol: sym}:         time.Minute, // matches the feed
+		{Exchange: ex, Symbol: "BTCUSD"}:    time.Minute, // typo
+		{Exchange: "kraken", Symbol: "ETH"}: time.Minute, // feed not configured
+	}
+	_, err := NewPipeline(cfg, Deps{
+		Feeds: []Feed{newFakeFeed(ex, []string{sym})}, Incidents: &fakeStore{}, Bars: &fakeSink{},
+		Metrics: newFakeMetrics(), Logger: slog.New(slog.DiscardHandler),
+	})
+	want := "new pipeline: stale override for binance:BTCUSD, kraken:ETH matches no configured stream"
+	if err == nil || err.Error() != want {
+		t.Fatalf("NewPipeline() = %v, want %q", err, want)
+	}
+
+	cfg.StaleAfter = map[domain.StreamKey]time.Duration{{Exchange: ex, Symbol: sym}: time.Minute}
+	if _, err := NewPipeline(cfg, Deps{
+		Feeds: []Feed{newFakeFeed(ex, []string{sym})}, Incidents: &fakeStore{}, Bars: &fakeSink{},
+		Metrics: newFakeMetrics(), Logger: slog.New(slog.DiscardHandler),
+	}); err != nil {
+		t.Errorf("override for a configured stream: %v", err)
 	}
 }

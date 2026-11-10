@@ -29,10 +29,16 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
+
+// Exchange identifies Mercado Bitcoin in stream keys, logs and metrics. It
+// doubles as the LEAN market name; LEAN has no Mercado Bitcoin market, so
+// "mercadobitcoin" must be registered in LEAN as a custom market (Market.Add)
+// before a backtest can read it; see docs/adr/0006.
+const Exchange = "mercadobitcoin"
 
 // DefaultURL is the production WebSocket endpoint.
 const DefaultURL = "wss://ws.mercadobitcoin.net/ws"
@@ -44,13 +50,13 @@ const (
 	pingInterval = 5 * time.Second
 	// defaultReadTimeout tolerates two lost pongs.
 	defaultReadTimeout = 15 * time.Second
-	userAgent          = "tickguard (+https://github.com/Amadeus-22/tickguard)"
+	userAgent          = "tekel (+https://github.com/Amadeus-22/tekel)"
 )
 
 var appPing = []byte(`{"type":"ping"}`)
 
 // symbolRE is Mercado Bitcoin's REST spelling BASE-QUOTE ("BTC-BRL"). It is
-// the symbol tickguard reports and writes (LEAN ticker "btcbrl").
+// the symbol Tekel reports and writes (LEAN ticker "btcbrl").
 var symbolRE = regexp.MustCompile(`^[A-Z0-9]{1,12}-[A-Z0-9]{1,12}$`)
 
 // MarketID converts "BTC-BRL" to the WebSocket market id "BRLBTC" (quote
@@ -81,33 +87,26 @@ type Feed struct {
 
 // New validates cfg and returns a feed.
 func New(cfg Config) (*Feed, error) {
-	if len(cfg.Symbols) == 0 {
-		return nil, errors.New("mercadobitcoin: at least one symbol is required")
+	if err := wsconn.CheckSymbols(Exchange, cfg.Symbols, symbolRE, "look like BTC-BRL"); err != nil {
+		return nil, err
 	}
 	ids := make(map[string]string, len(cfg.Symbols))
 	for _, s := range cfg.Symbols {
-		if !symbolRE.MatchString(s) {
-			return nil, fmt.Errorf("mercadobitcoin: symbol %q must look like BTC-BRL", s)
-		}
 		ids[MarketID(s)] = s
 	}
 	if cfg.Logger == nil {
 		return nil, errors.New("mercadobitcoin: logger is required")
 	}
-	if cfg.Conn.ReadTimeout == 0 || cfg.Conn.ReadTimeout > defaultReadTimeout {
-		cfg.Conn.ReadTimeout = defaultReadTimeout
-	}
+	cfg.Conn.CapReadTimeout(defaultReadTimeout)
 	cfg.Conn.PingInterval = pingInterval
 	cfg.Conn.AppPing = appPing
 	cfg.Conn.Header = http.Header{"User-Agent": {userAgent}}
-	cfg.Conn.Name = domain.ExchangeMercadoBitcoin
-	cfg.Conn.URL = cfg.URL
-	cfg.Conn.Logger = cfg.Logger
-	return &Feed{cfg: cfg, ids: ids, malformed: wsconn.NewMalformed(domain.ExchangeMercadoBitcoin, cfg.Logger, cfg.DecodeErrors)}, nil
+	cfg.Conn.Bind(Exchange, cfg.URL, cfg.Logger)
+	return &Feed{cfg: cfg, ids: ids, malformed: wsconn.NewMalformed(Exchange, cfg.Logger, cfg.DecodeErrors)}, nil
 }
 
 // Exchange implements app.Feed.
-func (f *Feed) Exchange() string { return domain.ExchangeMercadoBitcoin }
+func (f *Feed) Exchange() string { return Exchange }
 
 // Symbols implements app.Feed.
 func (f *Feed) Symbols() []string { return append([]string(nil), f.cfg.Symbols...) }
@@ -136,7 +135,6 @@ func NewSubscribeRequest(symbol string) SubscribeRequest {
 
 // Run implements app.Feed.
 func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
-	ex := domain.ExchangeMercadoBitcoin
 	return wsconn.Run(ctx, f.cfg.Conn, wsconn.Handlers{
 		Subscribe: func(_ context.Context, conn *websocket.Conn) error {
 			for _, s := range f.cfg.Symbols {
@@ -147,10 +145,10 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 			return nil
 		},
 		Up: func(ctx context.Context, at time.Time) error {
-			return emit(ctx, app.Event{Kind: app.EventConnected, Exchange: ex, At: at})
+			return emit(ctx, app.Event{Kind: app.EventConnected, At: at})
 		},
 		Down: func(ctx context.Context, at time.Time, cause error) error {
-			return emit(ctx, app.Event{Kind: app.EventDisconnected, Exchange: ex, At: at, Err: cause})
+			return emit(ctx, app.Event{Kind: app.EventDisconnected, At: at, Err: cause})
 		},
 		Message: func(ctx context.Context, msg []byte, received time.Time) error {
 			m, err := Decode(msg, received, f.ids)
@@ -168,12 +166,12 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 			if m.Trade == nil {
 				return nil
 			}
-			return emit(ctx, app.Event{Kind: app.EventTrade, Exchange: ex, At: received, Trade: *m.Trade})
+			return emit(ctx, app.Event{Kind: app.EventTrade, At: received, Trade: *m.Trade})
 		},
 	})
 }
 
-// Message is the part of one decoded message tickguard acts on.
+// Message is the part of one decoded message Tekel acts on.
 type Message struct {
 	// Trade is set for a "trade" event.
 	Trade *domain.Trade
@@ -264,7 +262,7 @@ func (d tradeData) trade(symbol string, received time.Time) (domain.Trade, error
 		return domain.Trade{}, err
 	}
 	t := domain.Trade{
-		Exchange: domain.ExchangeMercadoBitcoin, Symbol: symbol, TradeID: *d.TID,
+		Exchange: Exchange, Symbol: symbol, TradeID: *d.TID,
 		Price: price, Qty: qty, Side: side,
 		ExchangeTime: time.Unix(*d.Date, 0).UTC(), ReceivedTime: received.UTC(),
 	}

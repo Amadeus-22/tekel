@@ -1,5 +1,5 @@
 name: Bug report
-description: Something tickguard does wrong
+description: Something Tekel does wrong
 labels: [bug]
 body:
   - type: textarea

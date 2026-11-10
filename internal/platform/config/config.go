@@ -1,4 +1,4 @@
-// Package config reads tickguard's configuration from environment variables,
+// Package config reads Tekel's configuration from environment variables,
 // once, at startup. Every variable is documented in the README table.
 package config
 
@@ -6,13 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
-// Config is the validated process configuration. It holds plain values only;
-// cmd/tickguard maps them onto the packages that use them.
+// Config is the validated process configuration. It holds plain values (and
+// domain stream keys); cmd/tekel maps them onto the packages that use them.
 type Config struct {
 	HTTPAddr        string
 	LogLevel        string
@@ -20,25 +23,21 @@ type Config struct {
 	DBPath          string
 	ShutdownTimeout time.Duration
 
-	BinanceURL     string
-	BinanceSymbols []string
-	KrakenURL      string
-	KrakenSymbols  []string
+	Binance Feed
+	Kraken  Feed
 	// MercadoBitcoin is off unless symbols are set: LEAN needs a custom market
 	// to read its output (docs/adr/0006).
-	MercadoBitcoinURL     string
-	MercadoBitcoinSymbols []string
-	// KleverNetwork ("mainnet" or "testnet") turns on the KleverChain block
-	// feed; empty is off. An empty KleverURL means the public testnet node
-	// (docs/adr/0007).
-	KleverNetwork string
-	KleverURL     string
+	MercadoBitcoin Feed
+	// Klever's one "symbol" is the network ("mainnet" or "testnet"); none
+	// turns the KleverChain block feed off. An empty URL means the public
+	// testnet node (docs/adr/0007).
+	Klever Feed
 
 	ClockSkew           time.Duration
 	OutOfOrderTolerance time.Duration
 	StaleAfter          time.Duration
-	// StaleAfterOverrides maps "exchange:SYMBOL" to a per-stream stale threshold.
-	StaleAfterOverrides map[string]time.Duration
+	// StaleAfterOverrides holds per-stream stale thresholds.
+	StaleAfterOverrides map[domain.StreamKey]time.Duration
 	DuplicateWindow     int
 	SpikeWindow         int
 	SpikeK              float64
@@ -47,6 +46,20 @@ type Config struct {
 	Buffer   int
 	BarGrace time.Duration
 }
+
+// Feed is one source's endpoint and what to subscribe to there. An empty
+// Symbols list turns the source off.
+type Feed struct {
+	URL     string
+	Symbols []string
+}
+
+// On reports whether the feed is configured to run.
+func (f Feed) On() bool { return len(f.Symbols) > 0 }
+
+// Feeds lists every source in a fixed order: Binance, Kraken, Mercado
+// Bitcoin, Klever.
+func (c Config) Feeds() []Feed { return []Feed{c.Binance, c.Kraken, c.MercadoBitcoin, c.Klever} }
 
 // Lookup is os.LookupEnv's signature, injectable for tests.
 type Lookup func(key string) (string, bool)
@@ -59,46 +72,44 @@ func FromEnv() (Config, error) { return Load(os.LookupEnv) }
 func Load(lookup Lookup) (Config, error) {
 	p := parser{lookup: lookup}
 	c := Config{
-		HTTPAddr:        p.str("TICKGUARD_HTTP_ADDR", ":8080"),
-		LogLevel:        p.str("TICKGUARD_LOG_LEVEL", "info"),
-		DataDir:         p.str("TICKGUARD_DATA_DIR", "./data"),
-		DBPath:          p.str("TICKGUARD_DB_PATH", "./tickguard.db"),
-		ShutdownTimeout: p.duration("TICKGUARD_SHUTDOWN_TIMEOUT", 10*time.Second),
+		HTTPAddr:        p.str("TEKEL_HTTP_ADDR", "127.0.0.1:8080"),
+		LogLevel:        p.str("TEKEL_LOG_LEVEL", "info"),
+		DataDir:         p.str("TEKEL_DATA_DIR", "./data"),
+		DBPath:          p.str("TEKEL_DB_PATH", "./tekel.db"),
+		ShutdownTimeout: p.duration("TEKEL_SHUTDOWN_TIMEOUT", 10*time.Second),
 
-		BinanceURL:     p.str("TICKGUARD_BINANCE_URL", "wss://stream.binance.com:9443"),
-		BinanceSymbols: p.list("TICKGUARD_BINANCE_SYMBOLS", "BTCUSDT,ETHUSDT"),
-		KrakenURL:      p.str("TICKGUARD_KRAKEN_URL", "wss://ws.kraken.com/v2"),
-		KrakenSymbols:  p.list("TICKGUARD_KRAKEN_SYMBOLS", "BTC/USD,ETH/USD"),
+		Binance: p.feed("TEKEL_BINANCE_URL", "wss://stream.binance.com:9443",
+			"TEKEL_BINANCE_SYMBOLS", "BTCUSDT,ETHUSDT"),
+		Kraken: p.feed("TEKEL_KRAKEN_URL", "wss://ws.kraken.com/v2",
+			"TEKEL_KRAKEN_SYMBOLS", "BTC/USD,ETH/USD"),
+		MercadoBitcoin: p.feed("TEKEL_MERCADOBITCOIN_URL", "wss://ws.mercadobitcoin.net/ws",
+			"TEKEL_MERCADOBITCOIN_SYMBOLS", ""),
+		Klever: p.feed("TEKEL_KLEVER_URL", "", "TEKEL_KLEVER_NETWORK", ""),
 
-		MercadoBitcoinURL:     p.str("TICKGUARD_MERCADOBITCOIN_URL", "wss://ws.mercadobitcoin.net/ws"),
-		MercadoBitcoinSymbols: p.list("TICKGUARD_MERCADOBITCOIN_SYMBOLS", ""),
+		ClockSkew:           p.duration("TEKEL_CLOCK_SKEW", 2*time.Second),
+		OutOfOrderTolerance: p.duration("TEKEL_OUT_OF_ORDER_TOLERANCE", 0),
+		StaleAfter:          p.duration("TEKEL_STALE_AFTER", 60*time.Second),
+		StaleAfterOverrides: p.overrides("TEKEL_STALE_AFTER_OVERRIDES"),
+		DuplicateWindow:     p.integer("TEKEL_DUPLICATE_WINDOW", 10_000),
+		SpikeWindow:         p.integer("TEKEL_SPIKE_WINDOW", 101),
+		SpikeK:              p.float("TEKEL_SPIKE_K", 10),
+		SpikeMinDeviation:   p.float("TEKEL_SPIKE_MIN_DEVIATION", 0.005),
 
-		KleverNetwork: p.str("TICKGUARD_KLEVER_NETWORK", ""),
-		KleverURL:     p.str("TICKGUARD_KLEVER_URL", ""),
-
-		ClockSkew:           p.duration("TICKGUARD_CLOCK_SKEW", 2*time.Second),
-		OutOfOrderTolerance: p.duration("TICKGUARD_OUT_OF_ORDER_TOLERANCE", 0),
-		StaleAfter:          p.duration("TICKGUARD_STALE_AFTER", 60*time.Second),
-		StaleAfterOverrides: p.overrides("TICKGUARD_STALE_AFTER_OVERRIDES"),
-		DuplicateWindow:     p.integer("TICKGUARD_DUPLICATE_WINDOW", 10_000),
-		SpikeWindow:         p.integer("TICKGUARD_SPIKE_WINDOW", 101),
-		SpikeK:              p.float("TICKGUARD_SPIKE_K", 10),
-		SpikeMinDeviation:   p.float("TICKGUARD_SPIKE_MIN_DEVIATION", 0.005),
-
-		Buffer:   p.integer("TICKGUARD_BUFFER", 4096),
-		BarGrace: p.duration("TICKGUARD_BAR_GRACE", 2*time.Second),
+		Buffer:   p.integer("TEKEL_BUFFER", 4096),
+		BarGrace: p.duration("TEKEL_BAR_GRACE", 2*time.Second),
 	}
-	p.check(c.HTTPAddr != "", "TICKGUARD_HTTP_ADDR must not be empty")
-	p.check(c.DataDir != "", "TICKGUARD_DATA_DIR must not be empty")
-	p.check(c.DBPath != "", "TICKGUARD_DB_PATH must not be empty")
-	p.check(len(c.BinanceSymbols)+len(c.KrakenSymbols)+len(c.MercadoBitcoinSymbols) > 0 || c.KleverNetwork != "",
-		"at least one of TICKGUARD_BINANCE_SYMBOLS, TICKGUARD_KRAKEN_SYMBOLS and TICKGUARD_MERCADOBITCOIN_SYMBOLS must list a symbol, or TICKGUARD_KLEVER_NETWORK must be set")
-	p.check(c.ShutdownTimeout > 0, "TICKGUARD_SHUTDOWN_TIMEOUT must be positive")
-	p.check(c.Buffer > 0, "TICKGUARD_BUFFER must be positive")
+	p.check(c.HTTPAddr != "", "TEKEL_HTTP_ADDR must not be empty")
+	p.check(c.DataDir != "", "TEKEL_DATA_DIR must not be empty")
+	p.check(c.DBPath != "", "TEKEL_DB_PATH must not be empty")
+	p.check(slices.ContainsFunc(c.Feeds(), Feed.On),
+		"at least one of TEKEL_BINANCE_SYMBOLS, TEKEL_KRAKEN_SYMBOLS and TEKEL_MERCADOBITCOIN_SYMBOLS must list a symbol, or TEKEL_KLEVER_NETWORK must be set")
+	p.check(len(c.Klever.Symbols) <= 1, "TEKEL_KLEVER_NETWORK must name one network")
+	p.check(c.ShutdownTimeout > 0, "TEKEL_SHUTDOWN_TIMEOUT must be positive")
+	p.check(c.Buffer > 0, "TEKEL_BUFFER must be positive")
 	switch c.LogLevel {
 	case "debug", "info", "warn", "error":
 	default:
-		p.fail("TICKGUARD_LOG_LEVEL must be debug, info, warn or error, got %q", c.LogLevel)
+		p.fail("TEKEL_LOG_LEVEL must be debug, info, warn or error, got %q", c.LogLevel)
 	}
 	if err := errors.Join(p.errs...); err != nil {
 		return Config{}, fmt.Errorf("invalid configuration:\n%w", err)
@@ -138,6 +149,11 @@ func (p *parser) list(key, def string) []string {
 		}
 	}
 	return out
+}
+
+// feed reads one source's URL and symbol list.
+func (p *parser) feed(urlKey, urlDef, symbolsKey, symbolsDef string) Feed {
+	return Feed{URL: p.str(urlKey, urlDef), Symbols: p.list(symbolsKey, symbolsDef)}
 }
 
 func (p *parser) duration(key string, def time.Duration) time.Duration {
@@ -180,8 +196,8 @@ func (p *parser) float(key string, def float64) float64 {
 }
 
 // overrides parses "binance:BTCUSDT=10s,kraken:ETH/USD=5m".
-func (p *parser) overrides(key string) map[string]time.Duration {
-	out := map[string]time.Duration{}
+func (p *parser) overrides(key string) map[domain.StreamKey]time.Duration {
+	out := map[domain.StreamKey]time.Duration{}
 	v, ok := p.lookup(key)
 	if !ok {
 		return out
@@ -198,7 +214,7 @@ func (p *parser) overrides(key string) map[string]time.Duration {
 			p.fail("%s: want exchange:SYMBOL=duration, got %q", key, item)
 			continue
 		}
-		out[exchange+":"+symbol] = d
+		out[domain.StreamKey{Exchange: exchange, Symbol: symbol}] = d
 	}
 	return out
 }

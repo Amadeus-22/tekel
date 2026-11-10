@@ -1,20 +1,10 @@
-// Package domain holds tickguard's core types: trades, quality incidents and bars.
-// It is pure: no I/O and no imports from other tickguard packages.
+// Package domain holds Tekel's core types: trades, quality incidents and bars.
+// It is pure: no I/O and no imports from other Tekel packages.
 package domain
 
 import (
 	"fmt"
 	"time"
-)
-
-// Exchange identifiers. They double as LEAN market names, which is why they are
-// lowercase and must match LEAN's Common/Market.cs constants. LEAN has no
-// Mercado Bitcoin market: "mercadobitcoin" must be registered in LEAN as a
-// custom market (Market.Add) before a backtest can read it; see docs/adr/0006.
-const (
-	ExchangeBinance        = "binance"
-	ExchangeKraken         = "kraken"
-	ExchangeMercadoBitcoin = "mercadobitcoin"
 )
 
 // Side is the side of the taker (aggressor) order.
@@ -55,7 +45,7 @@ type Trade struct {
 	Qty          Decimal
 	Side         Side
 	ExchangeTime time.Time
-	// ReceivedTime is when tickguard read the message off the socket.
+	// ReceivedTime is when Tekel read the message off the socket.
 	ReceivedTime time.Time
 }
 

@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 // Aggregator builds minute bars for one stream. Trades must arrive roughly in

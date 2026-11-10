@@ -6,15 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 var t0 = time.Date(2026, 3, 1, 12, 0, 0, 123456000, time.UTC)
 
 func openTemp(t *testing.T) *Store {
 	t.Helper()
-	s, err := Open(context.Background(), filepath.Join(t.TempDir(), "tickguard.db"))
+	s, err := Open(context.Background(), filepath.Join(t.TempDir(), "tekel.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestListFilters(t *testing.T) {
 }
 
 func TestReopenKeepsData(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "tickguard.db")
+	path := filepath.Join(t.TempDir(), "tekel.db")
 	s, err := Open(context.Background(), path)
 	if err != nil {
 		t.Fatal(err)

@@ -17,10 +17,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
+
+// Exchange identifies Binance in stream keys, logs and metrics. It doubles as
+// the LEAN market name, so it must match LEAN's Common/Market.cs constant.
+const Exchange = "binance"
 
 // DefaultBaseURL is the public market-data endpoint.
 const DefaultBaseURL = "wss://stream.binance.com:9443"
@@ -48,21 +52,14 @@ type Feed struct {
 
 // New validates cfg and returns a feed.
 func New(cfg Config) (*Feed, error) {
-	if len(cfg.Symbols) == 0 {
-		return nil, errors.New("binance: at least one symbol is required")
-	}
-	for _, s := range cfg.Symbols {
-		if !symbolRE.MatchString(s) {
-			return nil, fmt.Errorf("binance: symbol %q must be uppercase letters and digits, e.g. BTCUSDT", s)
-		}
+	if err := wsconn.CheckSymbols(Exchange, cfg.Symbols, symbolRE, "be uppercase letters and digits, e.g. BTCUSDT"); err != nil {
+		return nil, err
 	}
 	if cfg.Logger == nil {
 		return nil, errors.New("binance: logger is required")
 	}
-	cfg.Conn.Name = domain.ExchangeBinance
-	cfg.Conn.URL = StreamURL(cfg.BaseURL, cfg.Symbols)
-	cfg.Conn.Logger = cfg.Logger
-	return &Feed{cfg: cfg, malformed: wsconn.NewMalformed(domain.ExchangeBinance, cfg.Logger, cfg.DecodeErrors)}, nil
+	cfg.Conn.Bind(Exchange, StreamURL(cfg.BaseURL, cfg.Symbols), cfg.Logger)
+	return &Feed{cfg: cfg, malformed: wsconn.NewMalformed(Exchange, cfg.Logger, cfg.DecodeErrors)}, nil
 }
 
 // StreamURL builds the combined-stream URL. Subscribing through the URL means a
@@ -78,7 +75,7 @@ func StreamURL(base string, symbols []string) string {
 }
 
 // Exchange implements app.Feed.
-func (f *Feed) Exchange() string { return domain.ExchangeBinance }
+func (f *Feed) Exchange() string { return Exchange }
 
 // Symbols implements app.Feed.
 func (f *Feed) Symbols() []string { return append([]string(nil), f.cfg.Symbols...) }
@@ -90,10 +87,10 @@ func (f *Feed) Kind() domain.StreamKind { return domain.StreamTrades }
 func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 	return wsconn.Run(ctx, f.cfg.Conn, wsconn.Handlers{
 		Up: func(ctx context.Context, at time.Time) error {
-			return emit(ctx, app.Event{Kind: app.EventConnected, Exchange: domain.ExchangeBinance, At: at})
+			return emit(ctx, app.Event{Kind: app.EventConnected, At: at})
 		},
 		Down: func(ctx context.Context, at time.Time, cause error) error {
-			return emit(ctx, app.Event{Kind: app.EventDisconnected, Exchange: domain.ExchangeBinance, At: at, Err: cause})
+			return emit(ctx, app.Event{Kind: app.EventDisconnected, At: at, Err: cause})
 		},
 		Message: func(ctx context.Context, msg []byte, received time.Time) error {
 			t, ok, err := Decode(msg, received)
@@ -104,7 +101,7 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 			if !ok {
 				return nil
 			}
-			return emit(ctx, app.Event{Kind: app.EventTrade, Exchange: domain.ExchangeBinance, At: received, Trade: t})
+			return emit(ctx, app.Event{Kind: app.EventTrade, At: received, Trade: t})
 		},
 	})
 }
@@ -123,7 +120,7 @@ type envelope struct {
 // E is the event time and T the trade time, both in milliseconds by default;
 // m is "Is the buyer the market maker?"; M is documented as "Ignore".
 //
-// Every key is declared, including E and M which tickguard does not use:
+// Every key is declared, including E and M which Tekel does not use:
 // encoding/json matches keys case-insensitively when no exact field exists, so
 // without them "E" (a number) would land in the "e" string field and "M" in "m".
 type tradeEvent struct {
@@ -172,7 +169,7 @@ func Decode(msg []byte, received time.Time) (t domain.Trade, ok bool, err error)
 		side = domain.SideSell
 	}
 	t = domain.Trade{
-		Exchange: domain.ExchangeBinance, Symbol: ev.Symbol, TradeID: *ev.TradeID,
+		Exchange: Exchange, Symbol: ev.Symbol, TradeID: *ev.TradeID,
 		Price: price, Qty: qty, Side: side,
 		ExchangeTime: time.UnixMilli(*ev.TradeTime).UTC(), ReceivedTime: received.UTC(),
 	}

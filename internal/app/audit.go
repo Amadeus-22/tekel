@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/domain/audit"
+	"github.com/Amadeus-22/tekel/internal/domain/audit"
 )
 
 // SourceFile is one file found under the audited path.

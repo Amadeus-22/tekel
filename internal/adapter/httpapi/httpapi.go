@@ -1,4 +1,4 @@
-// Package httpapi serves tickguard's HTTP API: /v1 resources, health checks
+// Package httpapi serves Tekel's HTTP API: /v1 resources, health checks
 // and Prometheus metrics.
 package httpapi
 
@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 // Query limits for GET /v1/incidents.

@@ -1,4 +1,4 @@
-module github.com/Amadeus-22/tickguard
+module github.com/Amadeus-22/tekel
 
 go 1.24
 

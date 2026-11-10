@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 var (
 	t0  = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
-	key = domain.StreamKey{Exchange: domain.ExchangeBinance, Symbol: "BTCUSDT"}
+	key = domain.StreamKey{Exchange: "binance", Symbol: "BTCUSDT"}
 )
 
 // trade builds a well-behaved trade: id n, exchange time t0+n ms, received 50 ms later.
@@ -423,7 +423,7 @@ func TestKey(t *testing.T) {
 func block(nonce int64) domain.Block {
 	at := t0.Add(time.Duration(nonce) * 4 * time.Second)
 	return domain.Block{
-		Chain: domain.ChainKlever, Network: "testnet", Nonce: nonce, Hash: fmt.Sprintf("h%d", nonce),
+		Chain: "klever", Network: "testnet", Nonce: nonce, Hash: fmt.Sprintf("h%d", nonce),
 		ChainTime: at, ReceivedTime: at.Add(500 * time.Millisecond),
 	}
 }
@@ -431,7 +431,7 @@ func block(nonce int64) domain.Block {
 // TestBlockStream runs the gap story of docs/adr/0002 over block nonces: the
 // rules are the trade rules, the wording names nonces and blocks.
 func TestBlockStream(t *testing.T) {
-	bkey := domain.StreamKey{Exchange: domain.ChainKlever, Symbol: "testnet"}
+	bkey := domain.StreamKey{Exchange: "klever", Symbol: "testnet"}
 	s := NewBlockStream(bkey, DefaultConfig())
 	s.Connected(t0)
 

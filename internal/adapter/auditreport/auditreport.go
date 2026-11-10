@@ -11,8 +11,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain/audit"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain/audit"
 )
 
 // MaxTableIssues caps the issue lines of the table; JSON lists every kept issue.

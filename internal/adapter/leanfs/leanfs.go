@@ -1,5 +1,5 @@
 // Package leanfs writes minute trade bars in the on-disk format of the
-// QuantConnect LEAN engine, so a backtest can read tickguard's output directly.
+// QuantConnect LEAN engine, so a backtest can read Tekel's output directly.
 //
 // Layout (verified against LEAN's Data/crypto/readme.md and its sample files,
 // see docs/adr/0001-lean-output-format.md):
@@ -28,8 +28,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/domain"
-	"github.com/Amadeus-22/tickguard/internal/domain/bars"
+	"github.com/Amadeus-22/tekel/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain/bars"
 )
 
 // Writer implements app.BarSink. Each write rewrites that day's zip through a

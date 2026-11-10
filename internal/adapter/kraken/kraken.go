@@ -20,10 +20,14 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
+
+// Exchange identifies Kraken in stream keys, logs and metrics. It doubles as
+// the LEAN market name, so it must match LEAN's Common/Market.cs constant.
+const Exchange = "kraken"
 
 // DefaultURL is the public WebSocket v2 endpoint.
 const DefaultURL = "wss://ws.kraken.com/v2"
@@ -55,28 +59,19 @@ type Feed struct {
 
 // New validates cfg and returns a feed.
 func New(cfg Config) (*Feed, error) {
-	if len(cfg.Symbols) == 0 {
-		return nil, errors.New("kraken: at least one symbol is required")
-	}
-	for _, s := range cfg.Symbols {
-		if !symbolRE.MatchString(s) {
-			return nil, fmt.Errorf("kraken: symbol %q must look like BTC/USD", s)
-		}
+	if err := wsconn.CheckSymbols(Exchange, cfg.Symbols, symbolRE, "look like BTC/USD"); err != nil {
+		return nil, err
 	}
 	if cfg.Logger == nil {
 		return nil, errors.New("kraken: logger is required")
 	}
-	if cfg.Conn.ReadTimeout == 0 || cfg.Conn.ReadTimeout > defaultReadTimeout {
-		cfg.Conn.ReadTimeout = defaultReadTimeout
-	}
-	cfg.Conn.Name = domain.ExchangeKraken
-	cfg.Conn.URL = cfg.URL
-	cfg.Conn.Logger = cfg.Logger
-	return &Feed{cfg: cfg, malformed: wsconn.NewMalformed(domain.ExchangeKraken, cfg.Logger, cfg.DecodeErrors)}, nil
+	cfg.Conn.CapReadTimeout(defaultReadTimeout)
+	cfg.Conn.Bind(Exchange, cfg.URL, cfg.Logger)
+	return &Feed{cfg: cfg, malformed: wsconn.NewMalformed(Exchange, cfg.Logger, cfg.DecodeErrors)}, nil
 }
 
 // Exchange implements app.Feed.
-func (f *Feed) Exchange() string { return domain.ExchangeKraken }
+func (f *Feed) Exchange() string { return Exchange }
 
 // Symbols implements app.Feed.
 func (f *Feed) Symbols() []string { return append([]string(nil), f.cfg.Symbols...) }
@@ -117,10 +112,10 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 			return conn.WriteJSON(NewSubscribeRequest(f.cfg.Symbols))
 		},
 		Up: func(ctx context.Context, at time.Time) error {
-			return emit(ctx, app.Event{Kind: app.EventConnected, Exchange: domain.ExchangeKraken, At: at})
+			return emit(ctx, app.Event{Kind: app.EventConnected, At: at})
 		},
 		Down: func(ctx context.Context, at time.Time, cause error) error {
-			return emit(ctx, app.Event{Kind: app.EventDisconnected, Exchange: domain.ExchangeKraken, At: at, Err: cause})
+			return emit(ctx, app.Event{Kind: app.EventDisconnected, At: at, Err: cause})
 		},
 		Message: func(ctx context.Context, msg []byte, received time.Time) error {
 			m, err := Decode(msg, received)
@@ -133,7 +128,7 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 				return wsconn.Permanent(fmt.Errorf("subscribe rejected: %s", m.SubscribeError))
 			}
 			for _, t := range m.Trades {
-				ev := app.Event{Kind: app.EventTrade, Exchange: domain.ExchangeKraken, At: received, Trade: t}
+				ev := app.Event{Kind: app.EventTrade, At: received, Trade: t}
 				if err := emit(ctx, ev); err != nil {
 					return err
 				}
@@ -143,7 +138,7 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 	})
 }
 
-// Message is the part of one decoded Kraken message tickguard acts on.
+// Message is the part of one decoded Kraken message Tekel acts on.
 type Message struct {
 	// Trades from a "trade" channel snapshot or update, in message order.
 	Trades []domain.Trade
@@ -241,7 +236,7 @@ func (d tradeData) trade(received time.Time) (domain.Trade, error) {
 		return domain.Trade{}, fmt.Errorf("timestamp %s: %w", strconv.Quote(d.Timestamp), err)
 	}
 	t := domain.Trade{
-		Exchange: domain.ExchangeKraken, Symbol: d.Symbol, TradeID: *d.TradeID,
+		Exchange: Exchange, Symbol: d.Symbol, TradeID: *d.TradeID,
 		Price: price, Qty: qty, Side: side,
 		ExchangeTime: ts.UTC(), ReceivedTime: received.UTC(),
 	}

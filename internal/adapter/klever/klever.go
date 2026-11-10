@@ -1,6 +1,6 @@
 // Package klever is the KleverChain block feed: one WebSocket connection to a
 // Klever node's /subscribe endpoint with the "blocks" subscription, re-sent
-// after every reconnect. Blocks carry a sequential nonce, so tickguard's gap
+// after every reconnect. Blocks carry a sequential nonce, so Tekel's gap
 // rules apply to them; they carry no price, so the feed is of kind blocks (no
 // price check, no LEAN bars). See docs/adr/0007-klever-block-feed.md.
 //
@@ -31,10 +31,15 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
+
+// Chain identifies the KleverChain block stream. It takes the place of the
+// exchange in a StreamKey; the network ("mainnet", "testnet") takes the place
+// of the symbol. See docs/adr/0007.
+const Chain = "klever"
 
 // TestnetURL is the public testnet node's subscription endpoint. The public
 // mainnet node (node.mainnet.klever.org) answers 404 on /subscribe (checked
@@ -50,7 +55,7 @@ const (
 	maxMessageBytes = 8 << 20
 )
 
-// ChainIDs maps the networks tickguard knows to the chainID their blocks carry
+// ChainIDs maps the networks Tekel knows to the chainID their blocks carry
 // (GET /node/overview on node.mainnet.klever.org and node.testnet.klever.org,
 // 2026-11-10). A block from another chain stops the feed rather than being
 // recorded under the wrong network.
@@ -91,19 +96,15 @@ func New(cfg Config) (*Feed, error) {
 	if cfg.Logger == nil {
 		return nil, errors.New("klever: logger is required")
 	}
-	if cfg.Conn.ReadTimeout == 0 || cfg.Conn.ReadTimeout > defaultReadTimeout {
-		cfg.Conn.ReadTimeout = defaultReadTimeout
-	}
+	cfg.Conn.CapReadTimeout(defaultReadTimeout)
 	cfg.Conn.MaxMessageBytes = max(cfg.Conn.MaxMessageBytes, maxMessageBytes)
-	cfg.Conn.Name = domain.ChainKlever
-	cfg.Conn.URL = cfg.URL
-	cfg.Conn.Logger = cfg.Logger
+	cfg.Conn.Bind(Chain, cfg.URL, cfg.Logger)
 	return &Feed{cfg: cfg, chainID: chainID,
-		malformed: wsconn.NewMalformed(domain.ChainKlever, cfg.Logger, cfg.DecodeErrors)}, nil
+		malformed: wsconn.NewMalformed(Chain, cfg.Logger, cfg.DecodeErrors)}, nil
 }
 
 // Exchange implements app.Feed.
-func (f *Feed) Exchange() string { return domain.ChainKlever }
+func (f *Feed) Exchange() string { return Chain }
 
 // Symbols implements app.Feed: the one stream is the network.
 func (f *Feed) Symbols() []string { return []string{f.cfg.Network} }
@@ -124,16 +125,15 @@ func NewSubscribeRequest() SubscribeRequest {
 
 // Run implements app.Feed.
 func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
-	ch := domain.ChainKlever
 	return wsconn.Run(ctx, f.cfg.Conn, wsconn.Handlers{
 		Subscribe: func(_ context.Context, conn *websocket.Conn) error {
 			return conn.WriteJSON(NewSubscribeRequest())
 		},
 		Up: func(ctx context.Context, at time.Time) error {
-			return emit(ctx, app.Event{Kind: app.EventConnected, Exchange: ch, At: at})
+			return emit(ctx, app.Event{Kind: app.EventConnected, At: at})
 		},
 		Down: func(ctx context.Context, at time.Time, cause error) error {
-			return emit(ctx, app.Event{Kind: app.EventDisconnected, Exchange: ch, At: at, Err: cause})
+			return emit(ctx, app.Event{Kind: app.EventDisconnected, At: at, Err: cause})
 		},
 		Message: func(ctx context.Context, msg []byte, received time.Time) error {
 			m, err := Decode(msg, received, f.cfg.Network)
@@ -153,12 +153,12 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 				return wsconn.Permanent(fmt.Errorf("node %s serves chain %q, but %s is chain %q",
 					f.cfg.URL, m.ChainID, f.cfg.Network, f.chainID))
 			}
-			return emit(ctx, app.Event{Kind: app.EventBlock, Exchange: ch, At: received, Block: *m.Block})
+			return emit(ctx, app.Event{Kind: app.EventBlock, At: received, Block: *m.Block})
 		},
 	})
 }
 
-// Message is the part of one decoded message tickguard acts on.
+// Message is the part of one decoded message Tekel acts on.
 type Message struct {
 	// Block is set for a "blocks" event; ChainID is the chain it came from.
 	Block   *domain.Block
@@ -178,7 +178,7 @@ type envelope struct {
 	Error string          `json:"error"`
 }
 
-// blockData is the part of "data" that tickguard reads. timestamp is the block
+// blockData is the part of "data" that Tekel reads. timestamp is the block
 // header's Unix seconds times 1000 (indexer/dataParser.go).
 type blockData struct {
 	Hash      string  `json:"hash"`
@@ -214,7 +214,7 @@ func Decode(msg []byte, received time.Time, network string) (Message, error) {
 		return Message{}, errors.New("decode block: missing timestamp")
 	}
 	b := domain.Block{
-		Chain: domain.ChainKlever, Network: network, Nonce: int64(*d.Nonce), Hash: d.Hash, TxCount: d.TxCount,
+		Chain: Chain, Network: network, Nonce: int64(*d.Nonce), Hash: d.Hash, TxCount: d.TxCount,
 		ChainTime: time.UnixMilli(*d.Timestamp).UTC(), ReceivedTime: received.UTC(),
 	}
 	if err := b.Validate(); err != nil {

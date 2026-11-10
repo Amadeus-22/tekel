@@ -8,14 +8,15 @@ import (
 	"log/slog"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/Amadeus-22/tickguard/internal/domain"
-	"github.com/Amadeus-22/tickguard/internal/domain/bars"
-	"github.com/Amadeus-22/tickguard/internal/domain/quality"
+	"github.com/Amadeus-22/tekel/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain/bars"
+	"github.com/Amadeus-22/tekel/internal/domain/quality"
 )
 
 // Sink names used in the SinkError metric.
@@ -144,6 +145,18 @@ func NewPipeline(cfg Config, d Deps) (*Pipeline, error) {
 			p.stream(domain.StreamKey{Exchange: f.Exchange(), Symbol: sym}, f.Kind())
 		}
 	}
+	// An override for a stream no feed carries is a typo or a disabled feed;
+	// ignoring it would leave the stream it was meant for on the default.
+	var unknown []string
+	for key := range cfg.StaleAfter {
+		if _, ok := p.streams[key]; !ok {
+			unknown = append(unknown, key.String())
+		}
+	}
+	if len(unknown) > 0 {
+		slices.Sort(unknown)
+		return nil, fmt.Errorf("new pipeline: stale override for %s matches no configured stream", strings.Join(unknown, ", "))
+	}
 	return p, nil
 }
 
@@ -176,11 +189,13 @@ func (p *Pipeline) Run(ctx context.Context) error {
 	return err
 }
 
-// emitter returns the Emit function for one feed. A send that finds the buffer
-// full blocks, and the time spent blocked is reported as backpressure: tickguard
+// emitter returns the Emit function for one feed. It stamps every event with
+// the feed's exchange, so feeds do not have to. A send that finds the buffer
+// full blocks, and the time spent blocked is reported as backpressure: Tekel
 // never drops a trade to keep up (docs/adr/0003).
 func (p *Pipeline) emitter(events chan<- Event, exchange string) Emit {
 	return func(ctx context.Context, ev Event) error {
+		ev.Exchange = exchange
 		select {
 		case events <- ev:
 			return nil

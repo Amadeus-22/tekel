@@ -2,6 +2,10 @@
 
 Status: accepted · 2026-09-29
 
+> Written when the project was named tickguard. [ADR 0008](0008-rename-to-tekel.md)
+> renamed it to Tekel: `TICKGUARD_*` variables are now `TEKEL_*`, `tickguard_*`
+> metrics `tekel_*`.
+
 ## Context
 
 Mercado Bitcoin is Brazil's largest crypto exchange (BRL-quoted markets). LEAN

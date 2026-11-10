@@ -1,4 +1,4 @@
-// Package app holds tickguard's use case: the Pipeline that fans in exchange
+// Package app holds Tekel's use case: the Pipeline that fans in exchange
 // feeds, validates every trade and routes the results to the sinks. It defines
 // the ports (interfaces) it needs; adapters implement them.
 package app
@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 // EventKind says what an Event carries.
@@ -27,9 +27,10 @@ const (
 
 // Event is what a Feed emits. Connection events apply to every symbol of the feed.
 type Event struct {
-	Kind     EventKind
+	Kind EventKind
+	// Exchange is set by the pipeline from Feed.Exchange; feeds leave it empty.
 	Exchange string
-	// At is when the event happened on tickguard's clock.
+	// At is when the event happened on Tekel's clock.
 	At    time.Time
 	Trade domain.Trade // EventTrade only
 	Block domain.Block // EventBlock only

@@ -11,8 +11,8 @@ import (
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
 
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 // MaxLimit caps one List call.

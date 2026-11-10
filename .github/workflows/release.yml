@@ -11,9 +11,9 @@ permissions:
   packages: write
 
 env:
-  APP: tickguard
-  CMD: ./cmd/tickguard
-  IMAGE: ghcr.io/amadeus-22/tickguard
+  APP: tekel
+  CMD: ./cmd/tekel
+  IMAGE: ghcr.io/amadeus-22/tekel
 
 jobs:
   binaries:

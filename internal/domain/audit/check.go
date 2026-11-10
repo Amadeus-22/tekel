@@ -5,8 +5,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/domain"
-	"github.com/Amadeus-22/tickguard/internal/domain/quality"
+	"github.com/Amadeus-22/tekel/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain/quality"
 )
 
 const day = 24 * time.Hour

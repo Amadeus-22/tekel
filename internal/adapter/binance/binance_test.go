@@ -3,19 +3,19 @@ package binance
 import (
 	"context"
 	"errors"
-	"io"
 	"log/slog"
-	"sync"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/gorilla/websocket"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
-	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn/wstest"
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/adapter/feedtest"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsconn/wstest"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 // docExample is the payload from Binance's "Trade Streams" documentation,
@@ -91,24 +91,26 @@ func TestStreamURL(t *testing.T) {
 	}
 }
 
-func discard() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
-
 func TestNewValidates(t *testing.T) {
+	log := slog.New(slog.DiscardHandler)
 	tests := []struct {
 		name string
 		cfg  Config
+		want string
 	}{
-		{"no symbols", Config{Logger: discard()}},
-		{"lowercase symbol", Config{Symbols: []string{"btcusdt"}, Logger: discard()}},
-		{"slash symbol", Config{Symbols: []string{"BTC/USDT"}, Logger: discard()}},
-		{"no logger", Config{Symbols: []string{"BTCUSDT"}}},
+		{"no symbols", Config{Logger: log}, "binance: at least one symbol is required"},
+		{"lowercase symbol", Config{Symbols: []string{"btcusdt"}, Logger: log},
+			`binance: symbol "btcusdt" must be uppercase letters and digits, e.g. BTCUSDT`},
+		{"slash symbol", Config{Symbols: []string{"BTC/USDT"}, Logger: log},
+			`binance: symbol "BTC/USDT" must be uppercase letters and digits, e.g. BTCUSDT`},
+		{"no logger", Config{Symbols: []string{"BTCUSDT"}}, "binance: logger is required"},
 	}
 	for _, tt := range tests {
-		if _, err := New(tt.cfg); err == nil {
-			t.Errorf("%s: New() = nil error", tt.name)
+		if _, err := New(tt.cfg); err == nil || err.Error() != tt.want {
+			t.Errorf("%s: New() = %v, want %q", tt.name, err, tt.want)
 		}
 	}
-	f, err := New(Config{Symbols: []string{"BTCUSDT"}, Logger: discard(), BaseURL: DefaultBaseURL})
+	f, err := New(Config{Symbols: []string{"BTCUSDT"}, Logger: log, BaseURL: DefaultBaseURL})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,52 +132,21 @@ func TestFeedRunAgainstLocalServer(t *testing.T) {
 	})
 
 	var decodeErrors atomic.Int32
-	conn := wsconn.DefaultConfig()
-	conn.BackoffMin, conn.BackoffMax = time.Millisecond, 5*time.Millisecond
 	f, err := New(Config{
-		BaseURL: srv.URL(""), Symbols: []string{"BNBBTC"}, Conn: conn, Logger: discard(),
+		BaseURL: srv.URL(""), Symbols: []string{"BNBBTC"}, Conn: feedtest.FastConn(), Logger: slog.New(slog.DiscardHandler),
 		DecodeErrors: func() { decodeErrors.Add(1) },
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	var mu sync.Mutex
-	var kinds []app.EventKind
-	enough := make(chan struct{})
-	emit := func(_ context.Context, ev app.Event) error {
-		mu.Lock()
-		defer mu.Unlock()
-		if ev.Exchange != "binance" {
-			t.Errorf("event exchange = %q", ev.Exchange)
-		}
-		kinds = append(kinds, ev.Kind)
-		if len(kinds) == 5 { // up, trade, down, up, trade
-			close(enough)
-		}
-		return nil
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan error, 1)
-	go func() { done <- f.Run(ctx, emit) }()
-	select {
-	case <-enough:
-	case <-time.After(5 * time.Second):
-		t.Fatal("did not receive the expected events")
-	}
-	cancel()
-	if err := <-done; err != nil {
+	events, err := feedtest.Collect(t, f, 5) // up, trade, down, up, trade
+	if err != nil {
 		t.Fatalf("Run() = %v", err)
 	}
-
-	mu.Lock()
-	defer mu.Unlock()
 	want := []app.EventKind{app.EventConnected, app.EventTrade, app.EventDisconnected, app.EventConnected, app.EventTrade}
-	for i, k := range want {
-		if kinds[i] != k {
-			t.Fatalf("events = %v, want prefix %v", kinds, want)
-		}
+	if got := feedtest.Kinds(events); !slices.Equal(got, want) {
+		t.Fatalf("events = %v, want %v", got, want)
 	}
 	if decodeErrors.Load() < 1 {
 		t.Error("malformed message was not counted")
@@ -184,7 +155,7 @@ func TestFeedRunAgainstLocalServer(t *testing.T) {
 
 func TestFeedRunStopsWhenEmitFails(t *testing.T) {
 	srv := wstest.NewServer(t, func(_ int, conn *websocket.Conn) { wstest.DrainUntilClosed(conn) })
-	f, _ := New(Config{BaseURL: srv.URL(""), Symbols: []string{"BTCUSDT"}, Conn: wsconn.DefaultConfig(), Logger: discard()})
+	f, _ := New(Config{BaseURL: srv.URL(""), Symbols: []string{"BTCUSDT"}, Conn: wsconn.DefaultConfig(), Logger: slog.New(slog.DiscardHandler)})
 	ctx, cancel := context.WithCancel(context.Background())
 	emit := func(context.Context, app.Event) error {
 		cancel() // the pipeline is shutting down
