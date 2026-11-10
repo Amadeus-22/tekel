@@ -48,6 +48,10 @@ operational event; the second is a data-quality defect.
 Non-goals (MVP): order books, backfilling gaps through REST, storage beyond one
 machine, a UI.
 
+Observability stays outside the binary: `deploy/docker-compose.yml` has an
+`observability` profile with Prometheus (`deploy/prometheus/`) and a provisioned
+Grafana dashboard (`deploy/grafana/`) built only from the metrics below.
+
 ## Diagram
 
 ```mermaid
@@ -130,6 +134,6 @@ flowchart LR
 
 ## Roadmap
 
-Phase 2: Helm chart, one Deployment per exchange, Grafana dashboard.
+Phase 2: Helm chart, one Deployment per exchange.
 Phase 3: REST backfill of silent gaps (Mercado Bitcoin: `GET /{symbol}/trades?since=`, 1 request/s).
 Phase 4: web UI.

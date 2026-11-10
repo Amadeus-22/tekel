@@ -1,0 +1,10 @@
+# Scrapes Tekel for the optional observability profile:
+#   docker compose -f deploy/docker-compose.yml --profile observability up
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+scrape_configs:
+  - job_name: tekel
+    static_configs:
+      - targets: ["tekel:8080"]

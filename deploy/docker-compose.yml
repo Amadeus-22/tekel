@@ -1,4 +1,7 @@
-# Local run: docker compose -f deploy/docker-compose.yml up --build
+# Tekel alone:                docker compose -f deploy/docker-compose.yml up --build
+# With Prometheus + Grafana:  docker compose -f deploy/docker-compose.yml --profile observability up --build
+#   Grafana http://localhost:3000 (anonymous viewer), Prometheus http://localhost:9090.
+# Every port is published on 127.0.0.1 only.
 services:
   tekel:
     build:
@@ -7,16 +10,58 @@ services:
     image: tekel:dev
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       TEKEL_LOG_LEVEL: info
       TEKEL_BINANCE_SYMBOLS: BTCUSDT,ETHUSDT
       TEKEL_KRAKEN_SYMBOLS: BTC/USD,ETH/USD
-      TEKEL_MERCADOBITCOIN_SYMBOLS: ""   # e.g. BTC-BRL; LEAN needs a custom market (ADR 0006)
+      # Off unless set in the shell, e.g. TEKEL_MERCADOBITCOIN_SYMBOLS=BTC-BRL
+      # (LEAN needs a custom market, ADR 0006) or TEKEL_KLEVER_NETWORK=testnet.
+      TEKEL_MERCADOBITCOIN_SYMBOLS: ${TEKEL_MERCADOBITCOIN_SYMBOLS:-}
+      TEKEL_KLEVER_NETWORK: ${TEKEL_KLEVER_NETWORK:-}
+      TEKEL_STALE_AFTER_OVERRIDES: ${TEKEL_STALE_AFTER_OVERRIDES:-}
     volumes:
       # LEAN bars under /var/lib/tekel/data, incidents in tekel.db
       - tekel-data:/var/lib/tekel
     stop_grace_period: 15s
 
+  prometheus:
+    profiles: [observability]
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on: [tekel]
+
+  grafana:
+    profiles: [observability]
+    image: grafana/grafana:12.1.1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/tekel.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on: [prometheus]
+
 volumes:
   tekel-data:
+  prometheus-data:
+  grafana-data:
