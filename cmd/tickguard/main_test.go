@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -53,30 +54,54 @@ func TestBuildFeedsHonoursDisabledExchange(t *testing.T) {
 		t.Errorf("feeds = %v", feeds)
 	}
 
-	cfg.MercadoBitcoinSymbols = []string{"BTC-BRL"}
+	cfg.MercadoBitcoin.Symbols = []string{"BTC-BRL"}
 	feeds, err = buildFeeds(cfg, slog.Default(), metrics.New())
 	if err != nil || len(feeds) != 2 || feeds[1].Exchange() != "mercadobitcoin" {
 		t.Errorf("feeds with Mercado Bitcoin = %v, %v", feeds, err)
 	}
-	cfg.MercadoBitcoinSymbols = []string{"BRLBTC"}
+	cfg.MercadoBitcoin.Symbols = []string{"BRLBTC"}
 	if _, err := buildFeeds(cfg, slog.Default(), metrics.New()); err == nil {
 		t.Error("Mercado Bitcoin symbol in WebSocket spelling accepted")
 	}
-	cfg.MercadoBitcoinSymbols = nil
+	cfg.MercadoBitcoin.Symbols = nil
 
-	cfg.KleverNetwork = "testnet"
+	cfg.Klever.Symbols = []string{"testnet"}
 	feeds, err = buildFeeds(cfg, slog.Default(), metrics.New())
 	if err != nil || len(feeds) != 2 || feeds[1].Exchange() != "klever" || feeds[1].Kind() != domain.StreamBlocks {
 		t.Errorf("feeds with Klever = %v, %v", feeds, err)
 	}
-	cfg.KleverNetwork = "mainnet" // no public mainnet node serves /subscribe: a URL is required
+	cfg.Klever.Symbols = []string{"mainnet"} // no public mainnet node serves /subscribe: a URL is required
 	if _, err := buildFeeds(cfg, slog.Default(), metrics.New()); err == nil {
 		t.Error("Klever mainnet without a URL accepted")
 	}
-	cfg.KleverNetwork = ""
+	cfg.Klever.Symbols = nil
 
-	cfg.BinanceSymbols = []string{"not valid"}
+	cfg.Binance.Symbols = []string{"not valid"}
 	if _, err := buildFeeds(cfg, slog.Default(), metrics.New()); err == nil {
 		t.Error("invalid symbol accepted")
+	}
+}
+
+func TestBuildFeedsOrder(t *testing.T) {
+	cfg, err := config.Load(func(k string) (string, bool) {
+		v, ok := map[string]string{
+			"TICKGUARD_MERCADOBITCOIN_SYMBOLS": "BTC-BRL",
+			"TICKGUARD_KLEVER_NETWORK":         "testnet",
+		}[k]
+		return v, ok
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	feeds, err := buildFeeds(cfg, slog.New(slog.DiscardHandler), metrics.New())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, f := range feeds {
+		got = append(got, f.Exchange())
+	}
+	if want := "binance kraken mercadobitcoin klever"; strings.Join(got, " ") != want {
+		t.Errorf("feeds = %v, want %s", got, want)
 	}
 }

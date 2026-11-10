@@ -104,50 +104,45 @@ func run() error {
 	})
 
 	log.Info("tickguard started", "http_addr", cfg.HTTPAddr, "data_dir", cfg.DataDir, "db_path", cfg.DBPath,
-		"binance_symbols", strings.Join(cfg.BinanceSymbols, ","), "kraken_symbols", strings.Join(cfg.KrakenSymbols, ","),
-		"mercadobitcoin_symbols", strings.Join(cfg.MercadoBitcoinSymbols, ","), "klever_network", cfg.KleverNetwork)
+		"binance_symbols", strings.Join(cfg.Binance.Symbols, ","), "kraken_symbols", strings.Join(cfg.Kraken.Symbols, ","),
+		"mercadobitcoin_symbols", strings.Join(cfg.MercadoBitcoin.Symbols, ","), "klever_network", strings.Join(cfg.Klever.Symbols, ","))
 	err = g.Wait()
 	log.Info("tickguard stopped", "error", fmt.Sprint(err))
 	return err
 }
 
+// buildFeeds returns the configured feeds, in the order of this table. Adding
+// an exchange is one row here plus its config.Feed.
 func buildFeeds(cfg config.Config, log *slog.Logger, m *metrics.Metrics) ([]app.Feed, error) {
+	type newFeed func(conn wsconn.Config, decodeErrors func()) (app.Feed, error)
+	table := []struct {
+		name  string
+		cfg   config.Feed
+		build newFeed
+	}{
+		{binance.Exchange, cfg.Binance, func(conn wsconn.Config, decodeErrors func()) (app.Feed, error) {
+			return binance.New(binance.Config{BaseURL: cfg.Binance.URL, Symbols: cfg.Binance.Symbols,
+				Conn: conn, Logger: log, DecodeErrors: decodeErrors})
+		}},
+		{kraken.Exchange, cfg.Kraken, func(conn wsconn.Config, decodeErrors func()) (app.Feed, error) {
+			return kraken.New(kraken.Config{URL: cfg.Kraken.URL, Symbols: cfg.Kraken.Symbols,
+				Conn: conn, Logger: log, DecodeErrors: decodeErrors})
+		}},
+		{mercadobitcoin.Exchange, cfg.MercadoBitcoin, func(conn wsconn.Config, decodeErrors func()) (app.Feed, error) {
+			return mercadobitcoin.New(mercadobitcoin.Config{URL: cfg.MercadoBitcoin.URL, Symbols: cfg.MercadoBitcoin.Symbols,
+				Conn: conn, Logger: log, DecodeErrors: decodeErrors})
+		}},
+		{klever.Chain, cfg.Klever, func(conn wsconn.Config, decodeErrors func()) (app.Feed, error) {
+			return klever.New(klever.Config{URL: cfg.Klever.URL, Network: cfg.Klever.Symbols[0],
+				Conn: conn, Logger: log, DecodeErrors: decodeErrors})
+		}},
+	}
 	var feeds []app.Feed
-	if len(cfg.BinanceSymbols) > 0 {
-		f, err := binance.New(binance.Config{
-			BaseURL: cfg.BinanceURL, Symbols: cfg.BinanceSymbols, Conn: wsconn.DefaultConfig(), Logger: log,
-			DecodeErrors: func() { m.DecodeError(binance.Exchange) },
-		})
-		if err != nil {
-			return nil, err
+	for _, row := range table {
+		if !row.cfg.On() {
+			continue
 		}
-		feeds = append(feeds, f)
-	}
-	if len(cfg.KrakenSymbols) > 0 {
-		f, err := kraken.New(kraken.Config{
-			URL: cfg.KrakenURL, Symbols: cfg.KrakenSymbols, Conn: wsconn.DefaultConfig(), Logger: log,
-			DecodeErrors: func() { m.DecodeError(kraken.Exchange) },
-		})
-		if err != nil {
-			return nil, err
-		}
-		feeds = append(feeds, f)
-	}
-	if len(cfg.MercadoBitcoinSymbols) > 0 {
-		f, err := mercadobitcoin.New(mercadobitcoin.Config{
-			URL: cfg.MercadoBitcoinURL, Symbols: cfg.MercadoBitcoinSymbols, Conn: wsconn.DefaultConfig(), Logger: log,
-			DecodeErrors: func() { m.DecodeError(mercadobitcoin.Exchange) },
-		})
-		if err != nil {
-			return nil, err
-		}
-		feeds = append(feeds, f)
-	}
-	if cfg.KleverNetwork != "" {
-		f, err := klever.New(klever.Config{
-			URL: cfg.KleverURL, Network: cfg.KleverNetwork, Conn: wsconn.DefaultConfig(), Logger: log,
-			DecodeErrors: func() { m.DecodeError(klever.Chain) },
-		})
+		f, err := row.build(wsconn.DefaultConfig(), func() { m.DecodeError(row.name) })
 		if err != nil {
 			return nil, err
 		}

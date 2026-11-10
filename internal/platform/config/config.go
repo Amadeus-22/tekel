@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -20,19 +21,15 @@ type Config struct {
 	DBPath          string
 	ShutdownTimeout time.Duration
 
-	BinanceURL     string
-	BinanceSymbols []string
-	KrakenURL      string
-	KrakenSymbols  []string
+	Binance Feed
+	Kraken  Feed
 	// MercadoBitcoin is off unless symbols are set: LEAN needs a custom market
 	// to read its output (docs/adr/0006).
-	MercadoBitcoinURL     string
-	MercadoBitcoinSymbols []string
-	// KleverNetwork ("mainnet" or "testnet") turns on the KleverChain block
-	// feed; empty is off. An empty KleverURL means the public testnet node
-	// (docs/adr/0007).
-	KleverNetwork string
-	KleverURL     string
+	MercadoBitcoin Feed
+	// Klever's one "symbol" is the network ("mainnet" or "testnet"); none
+	// turns the KleverChain block feed off. An empty URL means the public
+	// testnet node (docs/adr/0007).
+	Klever Feed
 
 	ClockSkew           time.Duration
 	OutOfOrderTolerance time.Duration
@@ -47,6 +44,20 @@ type Config struct {
 	Buffer   int
 	BarGrace time.Duration
 }
+
+// Feed is one source's endpoint and what to subscribe to there. An empty
+// Symbols list turns the source off.
+type Feed struct {
+	URL     string
+	Symbols []string
+}
+
+// On reports whether the feed is configured to run.
+func (f Feed) On() bool { return len(f.Symbols) > 0 }
+
+// Feeds lists every source in a fixed order: Binance, Kraken, Mercado
+// Bitcoin, Klever.
+func (c Config) Feeds() []Feed { return []Feed{c.Binance, c.Kraken, c.MercadoBitcoin, c.Klever} }
 
 // Lookup is os.LookupEnv's signature, injectable for tests.
 type Lookup func(key string) (string, bool)
@@ -65,16 +76,13 @@ func Load(lookup Lookup) (Config, error) {
 		DBPath:          p.str("TICKGUARD_DB_PATH", "./tickguard.db"),
 		ShutdownTimeout: p.duration("TICKGUARD_SHUTDOWN_TIMEOUT", 10*time.Second),
 
-		BinanceURL:     p.str("TICKGUARD_BINANCE_URL", "wss://stream.binance.com:9443"),
-		BinanceSymbols: p.list("TICKGUARD_BINANCE_SYMBOLS", "BTCUSDT,ETHUSDT"),
-		KrakenURL:      p.str("TICKGUARD_KRAKEN_URL", "wss://ws.kraken.com/v2"),
-		KrakenSymbols:  p.list("TICKGUARD_KRAKEN_SYMBOLS", "BTC/USD,ETH/USD"),
-
-		MercadoBitcoinURL:     p.str("TICKGUARD_MERCADOBITCOIN_URL", "wss://ws.mercadobitcoin.net/ws"),
-		MercadoBitcoinSymbols: p.list("TICKGUARD_MERCADOBITCOIN_SYMBOLS", ""),
-
-		KleverNetwork: p.str("TICKGUARD_KLEVER_NETWORK", ""),
-		KleverURL:     p.str("TICKGUARD_KLEVER_URL", ""),
+		Binance: p.feed("TICKGUARD_BINANCE_URL", "wss://stream.binance.com:9443",
+			"TICKGUARD_BINANCE_SYMBOLS", "BTCUSDT,ETHUSDT"),
+		Kraken: p.feed("TICKGUARD_KRAKEN_URL", "wss://ws.kraken.com/v2",
+			"TICKGUARD_KRAKEN_SYMBOLS", "BTC/USD,ETH/USD"),
+		MercadoBitcoin: p.feed("TICKGUARD_MERCADOBITCOIN_URL", "wss://ws.mercadobitcoin.net/ws",
+			"TICKGUARD_MERCADOBITCOIN_SYMBOLS", ""),
+		Klever: p.feed("TICKGUARD_KLEVER_URL", "", "TICKGUARD_KLEVER_NETWORK", ""),
 
 		ClockSkew:           p.duration("TICKGUARD_CLOCK_SKEW", 2*time.Second),
 		OutOfOrderTolerance: p.duration("TICKGUARD_OUT_OF_ORDER_TOLERANCE", 0),
@@ -91,8 +99,9 @@ func Load(lookup Lookup) (Config, error) {
 	p.check(c.HTTPAddr != "", "TICKGUARD_HTTP_ADDR must not be empty")
 	p.check(c.DataDir != "", "TICKGUARD_DATA_DIR must not be empty")
 	p.check(c.DBPath != "", "TICKGUARD_DB_PATH must not be empty")
-	p.check(len(c.BinanceSymbols)+len(c.KrakenSymbols)+len(c.MercadoBitcoinSymbols) > 0 || c.KleverNetwork != "",
+	p.check(slices.ContainsFunc(c.Feeds(), Feed.On),
 		"at least one of TICKGUARD_BINANCE_SYMBOLS, TICKGUARD_KRAKEN_SYMBOLS and TICKGUARD_MERCADOBITCOIN_SYMBOLS must list a symbol, or TICKGUARD_KLEVER_NETWORK must be set")
+	p.check(len(c.Klever.Symbols) <= 1, "TICKGUARD_KLEVER_NETWORK must name one network")
 	p.check(c.ShutdownTimeout > 0, "TICKGUARD_SHUTDOWN_TIMEOUT must be positive")
 	p.check(c.Buffer > 0, "TICKGUARD_BUFFER must be positive")
 	switch c.LogLevel {
@@ -138,6 +147,11 @@ func (p *parser) list(key, def string) []string {
 		}
 	}
 	return out
+}
+
+// feed reads one source's URL and symbol list.
+func (p *parser) feed(urlKey, urlDef, symbolsKey, symbolsDef string) Feed {
+	return Feed{URL: p.str(urlKey, urlDef), Symbols: p.list(symbolsKey, symbolsDef)}
 }
 
 func (p *parser) duration(key string, def time.Duration) time.Duration {
