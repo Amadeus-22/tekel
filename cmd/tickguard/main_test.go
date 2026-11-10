@@ -64,6 +64,17 @@ func TestBuildFeedsHonoursDisabledExchange(t *testing.T) {
 	}
 	cfg.MercadoBitcoinSymbols = nil
 
+	cfg.KleverNetwork = "testnet"
+	feeds, err = buildFeeds(cfg, slog.Default(), metrics.New())
+	if err != nil || len(feeds) != 2 || feeds[1].Exchange() != "klever" || feeds[1].Kind() != domain.StreamBlocks {
+		t.Errorf("feeds with Klever = %v, %v", feeds, err)
+	}
+	cfg.KleverNetwork = "mainnet" // no public mainnet node serves /subscribe: a URL is required
+	if _, err := buildFeeds(cfg, slog.Default(), metrics.New()); err == nil {
+		t.Error("Klever mainnet without a URL accepted")
+	}
+	cfg.KleverNetwork = ""
+
 	cfg.BinanceSymbols = []string{"not valid"}
 	if _, err := buildFeeds(cfg, slog.Default(), metrics.New()); err == nil {
 		t.Error("invalid symbol accepted")

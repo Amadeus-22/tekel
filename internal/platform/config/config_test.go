@@ -118,3 +118,25 @@ func TestMercadoBitcoin(t *testing.T) {
 		t.Errorf("no symbols at all: err = %v", err)
 	}
 }
+
+func TestKlever(t *testing.T) {
+	c, err := Load(env(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.KleverNetwork != "" || c.KleverURL != "" {
+		t.Errorf("default = %q %q, want disabled", c.KleverNetwork, c.KleverURL)
+	}
+	// The block feed alone is a valid configuration.
+	c, err = Load(env(map[string]string{
+		"TICKGUARD_BINANCE_SYMBOLS": "", "TICKGUARD_KRAKEN_SYMBOLS": "",
+		"TICKGUARD_KLEVER_NETWORK": " mainnet ", "TICKGUARD_KLEVER_URL": "wss://node.example/subscribe",
+	}))
+	if err != nil || c.KleverNetwork != "mainnet" || c.KleverURL != "wss://node.example/subscribe" {
+		t.Errorf("klever = %q %q, err %v", c.KleverNetwork, c.KleverURL, err)
+	}
+	_, err = Load(env(map[string]string{"TICKGUARD_BINANCE_SYMBOLS": "", "TICKGUARD_KRAKEN_SYMBOLS": ""}))
+	if err == nil || !strings.Contains(err.Error(), "TICKGUARD_KLEVER_NETWORK") {
+		t.Errorf("no feed at all: err = %v", err)
+	}
+}

@@ -41,10 +41,10 @@ func newServer(t *testing.T, inc *fakeIncidents, ready error) *httptest.Server {
 	t.Helper()
 	h := NewHandler(Deps{
 		Streams: fakeStreams{{
-			Exchange: "binance", Symbol: "BTCUSDT", Connected: true, Trades: 42, LastTradeID: 9,
+			Exchange: "binance", Symbol: "BTCUSDT", Kind: domain.StreamTrades, Connected: true, Trades: 42, LastTradeID: 9,
 			LastPrice: "100.5", LastExchangeTime: t0, LastReceivedTime: t0.Add(30 * time.Millisecond),
 			Lag: 30 * time.Millisecond, Incidents: map[domain.IncidentKind]int{domain.KindDuplicate: 2},
-		}, {Exchange: "kraken", Symbol: "BTC/USD", Incidents: map[domain.IncidentKind]int{}}},
+		}, {Exchange: "klever", Symbol: "testnet", Kind: domain.StreamBlocks, Incidents: map[domain.IncidentKind]int{}}},
 		Incidents: inc,
 		Ready:     fakePinger{err: ready},
 		Metrics:   http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { io.WriteString(w, "metrics") }),
@@ -116,7 +116,7 @@ func TestStreams(t *testing.T) {
 		t.Fatalf("streams = %v", streams)
 	}
 	s := streams[0].(map[string]any)
-	if s["exchange"] != "binance" || s["connected"] != true || s["trades"] != float64(42) ||
+	if s["exchange"] != "binance" || s["kind"] != "trades" || s["connected"] != true || s["trades"] != float64(42) ||
 		s["last_price"] != "100.5" || s["lag_seconds"] != 0.03 || s["last_exchange_time"] != "2026-03-01T12:00:00Z" {
 		t.Errorf("stream = %v", s)
 	}
@@ -124,6 +124,9 @@ func TestStreams(t *testing.T) {
 		t.Errorf("incident counts = %v", s["incidents"])
 	}
 	idle := streams[1].(map[string]any)
+	if idle["kind"] != "blocks" {
+		t.Errorf("block stream kind = %v", idle["kind"])
+	}
 	if _, ok := idle["last_exchange_time"]; ok {
 		t.Errorf("a stream without trades must omit last_exchange_time: %v", idle)
 	}

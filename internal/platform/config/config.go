@@ -28,6 +28,11 @@ type Config struct {
 	// to read its output (docs/adr/0006).
 	MercadoBitcoinURL     string
 	MercadoBitcoinSymbols []string
+	// KleverNetwork ("mainnet" or "testnet") turns on the KleverChain block
+	// feed; empty is off. An empty KleverURL means the public testnet node
+	// (docs/adr/0007).
+	KleverNetwork string
+	KleverURL     string
 
 	ClockSkew           time.Duration
 	OutOfOrderTolerance time.Duration
@@ -68,6 +73,9 @@ func Load(lookup Lookup) (Config, error) {
 		MercadoBitcoinURL:     p.str("TICKGUARD_MERCADOBITCOIN_URL", "wss://ws.mercadobitcoin.net/ws"),
 		MercadoBitcoinSymbols: p.list("TICKGUARD_MERCADOBITCOIN_SYMBOLS", ""),
 
+		KleverNetwork: p.str("TICKGUARD_KLEVER_NETWORK", ""),
+		KleverURL:     p.str("TICKGUARD_KLEVER_URL", ""),
+
 		ClockSkew:           p.duration("TICKGUARD_CLOCK_SKEW", 2*time.Second),
 		OutOfOrderTolerance: p.duration("TICKGUARD_OUT_OF_ORDER_TOLERANCE", 0),
 		StaleAfter:          p.duration("TICKGUARD_STALE_AFTER", 60*time.Second),
@@ -83,8 +91,8 @@ func Load(lookup Lookup) (Config, error) {
 	p.check(c.HTTPAddr != "", "TICKGUARD_HTTP_ADDR must not be empty")
 	p.check(c.DataDir != "", "TICKGUARD_DATA_DIR must not be empty")
 	p.check(c.DBPath != "", "TICKGUARD_DB_PATH must not be empty")
-	p.check(len(c.BinanceSymbols)+len(c.KrakenSymbols)+len(c.MercadoBitcoinSymbols) > 0,
-		"at least one of TICKGUARD_BINANCE_SYMBOLS, TICKGUARD_KRAKEN_SYMBOLS and TICKGUARD_MERCADOBITCOIN_SYMBOLS must list a symbol")
+	p.check(len(c.BinanceSymbols)+len(c.KrakenSymbols)+len(c.MercadoBitcoinSymbols) > 0 || c.KleverNetwork != "",
+		"at least one of TICKGUARD_BINANCE_SYMBOLS, TICKGUARD_KRAKEN_SYMBOLS and TICKGUARD_MERCADOBITCOIN_SYMBOLS must list a symbol, or TICKGUARD_KLEVER_NETWORK must be set")
 	p.check(c.ShutdownTimeout > 0, "TICKGUARD_SHUTDOWN_TIMEOUT must be positive")
 	p.check(c.Buffer > 0, "TICKGUARD_BUFFER must be positive")
 	switch c.LogLevel {

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"strings"
@@ -20,6 +21,7 @@ var t0 = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 type fakeFeed struct {
 	exchange string
 	symbols  []string
+	kind     domain.StreamKind // zero means trades
 	events   []Event
 	err      error         // returned by Run after emitting, instead of waiting
 	emitted  chan struct{} // closed once every event was handed over
@@ -31,6 +33,12 @@ func newFakeFeed(exchange string, symbols []string, events ...Event) *fakeFeed {
 
 func (f *fakeFeed) Exchange() string  { return f.exchange }
 func (f *fakeFeed) Symbols() []string { return f.symbols }
+func (f *fakeFeed) Kind() domain.StreamKind {
+	if f.kind == "" {
+		return domain.StreamTrades
+	}
+	return f.kind
+}
 func (f *fakeFeed) Run(ctx context.Context, emit Emit) error {
 	for _, ev := range f.events {
 		if err := emit(ctx, ev); err != nil {
@@ -264,6 +272,50 @@ func TestPipelineEndToEnd(t *testing.T) {
 	}
 	if h.metrics.trades != 6 || !h.metrics.connected[ex] || h.metrics.incidents[domain.KindDisconnect] != 1 {
 		t.Errorf("metrics = %+v", h.metrics)
+	}
+}
+
+// TestPipelineBlockStream: a block feed gets the sequence, time and connection
+// checks, never a bar, and its status says kind=blocks, while a trade feed in the
+// same pipeline is unaffected.
+func TestPipelineBlockStream(t *testing.T) {
+	const chain, network = domain.ChainKlever, "testnet"
+	blockEv := func(nonce int64, at time.Duration) Event {
+		ts := t0.Add(at)
+		return Event{Kind: EventBlock, Exchange: chain, At: ts, Block: domain.Block{
+			Chain: chain, Network: network, Nonce: nonce, Hash: fmt.Sprintf("h%d", nonce),
+			ChainTime: ts, ReceivedTime: ts.Add(500 * time.Millisecond),
+		}}
+	}
+	up := Event{Kind: EventConnected, Exchange: chain, At: t0}
+	blocks := newFakeFeed(chain, []string{network}, up,
+		blockEv(100, 4*time.Second),
+		blockEv(101, 8*time.Second),
+		blockEv(104, 20*time.Second), // silent gap: 102 and 103 never arrived
+		blockEv(104, 21*time.Second), // duplicate: dropped
+		Event{Kind: EventDisconnected, Exchange: chain, At: t0.Add(22 * time.Second)},
+		Event{Kind: EventConnected, Exchange: chain, At: t0.Add(40 * time.Second)}, // known gap
+		blockEv(109, 40*time.Second), // no sequence_gap after reconnect
+	)
+	blocks.kind = domain.StreamBlocks
+	trades := newFakeFeed(ex, []string{sym})
+	h := newHarness(t, testConfig(), blocks, trades)
+	if st := h.p.Streams(); st[0].Kind != domain.StreamTrades || st[1].Kind != domain.StreamBlocks {
+		t.Fatalf("kinds before any event = %s, %s", st[0].Kind, st[1].Kind)
+	}
+	runUntilEmitted(t, h, blocks)
+
+	got := fmt.Sprint(h.store.kinds())
+	if want := "[sequence_gap duplicate disconnect]"; got != want {
+		t.Fatalf("incidents = %s, want %s", got, want)
+	}
+	if bars := h.sink.written(); len(bars) != 0 {
+		t.Fatalf("a block stream wrote %d bars", len(bars))
+	}
+	s := h.p.Streams()[1]
+	if s.Exchange != chain || s.Symbol != network || s.Kind != domain.StreamBlocks || s.Trades != 4 ||
+		s.LastTradeID != 109 || s.LastPrice != "" || s.Lag != 500*time.Millisecond || !s.Connected {
+		t.Errorf("status = %+v", s)
 	}
 }
 

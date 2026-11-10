@@ -19,6 +19,10 @@ operational event; the second is a data-quality defect.
   Kraken WebSocket v2 (`trade` channel) and Mercado Bitcoin WebSocket (`trade`
   subscription per market, sequential `tid`; a custom market for LEAN, see
   [ADR 0006](adr/0006-mercado-bitcoin-adapter.md)). Symbols come from config.
+- Chain: KleverChain blocks from a node's `/subscribe` WebSocket (`blocks`),
+  sequential nonce, a block per 4 s slot. A block stream (`kind: blocks`) runs
+  every check but `price_spike` over the nonce and writes no bars; see
+  [ADR 0007](adr/0007-klever-block-feed.md).
 - Normalised `Trade{Exchange, Symbol, TradeID, Price, Qty, Side, ExchangeTime, ReceivedTime}`.
   Price and Qty keep the exchange's decimal string and a parsed value.
 - Validators (pure functions over per-stream state):
@@ -51,12 +55,14 @@ flowchart LR
   B[Binance WS] --> CB[adapter/binance]
   K[Kraken WS] --> CK[adapter/kraken]
   MB[Mercado Bitcoin WS] --> CM[adapter/mercadobitcoin]
+  KN[Klever node WS] --> CKL[adapter/klever]
   CB --> P[app.Pipeline]
   CK --> P
   CM --> P
+  CKL -- blocks --> P
   P --> V[domain/quality validators]
   V --> I[(SQLite incidents)]
-  P --> A[domain/bars aggregator]
+  P -- trades only --> A[domain/bars aggregator]
   A --> L[adapter/leanfs LEAN zip writer]
   P --> M[/metrics/]
   H[adapter/httpapi] --> I
@@ -68,15 +74,16 @@ flowchart LR
 | Package | Responsibility |
 |---|---|
 | `cmd/tickguard` | wiring, signal handling, maps `platform/config` onto the packages below; `audit` subcommand (`audit.go`) |
-| `internal/domain` | `Trade`, `Incident`, `Bar`, exact `Decimal`, sentinel errors |
-| `internal/domain/quality` | validators and per-stream state (`Stream`), `SpikeRule`/`SpikeWindow` shared with audit; pure |
+| `internal/domain` | `Trade`, `Block` (chain block), `StreamKind`, `Incident`, `Bar`, exact `Decimal`, sentinel errors |
+| `internal/domain/quality` | validators and per-stream state (`Stream`; `NewBlockStream` runs the same rules over block nonces, without the price check), `SpikeRule`/`SpikeWindow` shared with audit; pure |
 | `internal/domain/audit` | LEAN path recognition, row parsers and audit checks (`Checker`, `CheckDays`); pure |
 | `internal/domain/bars` | minute bar aggregation (`Aggregator`) and `Merge`; pure |
-| `internal/app` | `Pipeline`: fan-in of feeds, runs validators, routes to sinks, serves stream status; ports `Feed`, `IncidentStore`, `BarSink`, `Metrics`. `Audit`: runs the audit over a `LeanSource`, builds `AuditReport` |
+| `internal/app` | `Pipeline`: fan-in of feeds, runs validators, routes trades to sinks (blocks only to incidents), serves stream status; ports `Feed` (declares its `StreamKind`), `IncidentStore`, `BarSink`, `Metrics`. `Audit`: runs the audit over a `LeanSource`, builds `AuditReport` |
 | `internal/adapter/binance` | combined-stream `@trade` client, message decoding |
 | `internal/adapter/kraken` | WS v2 client, `trade` subscribe, decoding, rejects bad symbols as permanent errors |
 | `internal/adapter/mercadobitcoin` | WS client, one `trade` subscribe per market, `{"type":"ping"}` keepalive, decoding, server errors are permanent |
-| `internal/adapter/wsconn` | shared reconnect loop with jittered backoff (cap 30s), ping/pong or application ping, handshake header, read deadline; log `Throttle` |
+| `internal/adapter/klever` | KleverChain block feed: node `/subscribe` WebSocket, `blocks` subscription, decoding, chain ID check; node errors and a wrong chain are permanent |
+| `internal/adapter/wsconn` | shared reconnect loop with jittered backoff (cap 30s), ping/pong or application ping, handshake header, read deadline; `Malformed` (counts every undecodable message, logs one sample per minute) |
 | `internal/adapter/wsconn/wstest` | local WebSocket test server (test helper, like `httptest`) |
 | `internal/adapter/sqlite` | `IncidentStore` + incident query, schema, readiness ping |
 | `internal/adapter/leanfs` | `BarSink` writing LEAN zips atomically (temp file + rename), continues a day after restart; `Source` (read-only `LeanSource` over a folder or one zip) |
@@ -91,9 +98,10 @@ flowchart LR
 | Failure | Behaviour |
 |---|---|
 | WS drops | `disconnect` incident with start/end (emitted on reconnect, or at shutdown if still down); reconnect with jittered backoff (cap 30s) and resubscribe |
-| WS silent but open | read deadline (Binance 60s, pings every 20s; Kraken 15s, heartbeat every 1s; Mercado Bitcoin 15s, `{"type":"ping"}` every 5s) closes it → treated as a drop |
+| WS silent but open | read deadline (Binance 60s, pings every 20s; Kraken 15s, heartbeat every 1s; Mercado Bitcoin 15s, `{"type":"ping"}` every 5s; Klever 30s, server pings every 15s) closes it → treated as a drop |
 | Exchange sends malformed message | counted in `tickguard_decode_errors_total`, skipped, logged at most once per minute |
-| Exchange rejects a subscription (Kraken, Mercado Bitcoin) | permanent error: the process exits non-zero with the exchange's message |
+| Exchange rejects a subscription (Kraken, Mercado Bitcoin, Klever node) | permanent error: the process exits non-zero with the exchange's message |
+| Klever node serves another chain than the configured network | permanent error naming both chain IDs; no block is recorded |
 | Slow sink | bounded channel; if full, the pipeline blocks the feed and `tickguard_backpressure_seconds_total` rises (no silent drops) |
 | Sink write fails | logged, counted in `tickguard_sink_errors_total`; validation continues |
 | Trade arrives after its bar was written | kept out of bars, counted in `tickguard_late_trades_total` (still validated) |
@@ -115,7 +123,8 @@ flowchart LR
 [0003 backpressure instead of dropping](adr/0003-backpressure-instead-of-dropping.md) ·
 [0004 SQLite for incidents](adr/0004-sqlite-for-incidents.md) ·
 [0005 audit of existing LEAN data](adr/0005-audit-lean-data.md) ·
-[0006 Mercado Bitcoin adapter](adr/0006-mercado-bitcoin-adapter.md).
+[0006 Mercado Bitcoin adapter](adr/0006-mercado-bitcoin-adapter.md) ·
+[0007 KleverChain block feed](adr/0007-klever-block-feed.md).
 
 ## Roadmap
 

@@ -62,10 +62,13 @@ type Deps struct {
 
 // StreamStatus is a point-in-time view of one stream, served by GET /v1/streams.
 type StreamStatus struct {
-	Exchange         string
-	Symbol           string
-	Connected        bool
-	Trades           uint64
+	Exchange  string
+	Symbol    string
+	Kind      domain.StreamKind
+	Connected bool
+	// Trades counts accepted events: trades, or blocks on a block stream.
+	Trades uint64
+	// LastTradeID is the last trade ID, or the last block nonce.
 	LastTradeID      int64
 	LastPrice        string
 	LastExchangeTime time.Time
@@ -78,6 +81,8 @@ type StreamStatus struct {
 
 // stream is the pipeline's per-stream state. quality and agg are touched only by
 // the consumer goroutine; status is shared with API readers under Pipeline.mu.
+// A block stream has an aggregator too, but blocks never reach it, so it never
+// produces a bar.
 type stream struct {
 	quality *quality.Stream
 	agg     *bars.Aggregator
@@ -136,7 +141,7 @@ func NewPipeline(cfg Config, d Deps) (*Pipeline, error) {
 	}
 	for _, f := range d.Feeds {
 		for _, sym := range f.Symbols() {
-			p.stream(domain.StreamKey{Exchange: f.Exchange(), Symbol: sym})
+			p.stream(domain.StreamKey{Exchange: f.Exchange(), Symbol: sym}, f.Kind())
 		}
 	}
 	return p, nil
@@ -213,6 +218,8 @@ func (p *Pipeline) handle(ctx context.Context, ev Event) {
 	switch ev.Kind {
 	case EventTrade:
 		p.handleTrade(ctx, ev.Trade)
+	case EventBlock:
+		p.handleBlock(ctx, ev.Block)
 	case EventConnected:
 		p.metrics.SetConnected(ev.Exchange, true)
 		p.log.Info("feed connected", "exchange", ev.Exchange)
@@ -235,27 +242,10 @@ func (p *Pipeline) handle(ctx context.Context, ev Event) {
 }
 
 func (p *Pipeline) handleTrade(ctx context.Context, t domain.Trade) {
-	s := p.stream(t.Key())
-	lag := t.ReceivedTime.Sub(t.ExchangeTime)
-	p.metrics.TradeReceived(t.Exchange, t.Symbol, lag)
-
-	v := s.quality.Observe(t)
-	for _, inc := range v.Incidents {
-		p.record(ctx, inc)
-	}
-	if v.Drop {
+	s := p.stream(t.Key(), domain.StreamTrades)
+	if !p.accept(ctx, s, s.quality.Observe(t), t.TradeID, t.Price.String(), t.ExchangeTime, t.ReceivedTime) {
 		return
 	}
-
-	p.mu.Lock()
-	st := &s.status
-	st.Trades++
-	st.LastTradeID = t.TradeID
-	st.LastPrice = t.Price.String()
-	st.LastExchangeTime = t.ExchangeTime
-	st.LastReceivedTime = t.ReceivedTime
-	st.Lag = lag
-	p.mu.Unlock()
 
 	done, ok, err := s.agg.Add(t)
 	switch {
@@ -267,6 +257,38 @@ func (p *Pipeline) handleTrade(ctx context.Context, t domain.Trade) {
 	case ok:
 		p.writeBar(ctx, done)
 	}
+}
+
+// handleBlock validates a chain block. Blocks have no price and are not bars:
+// only the stream status, incidents and metrics see them.
+func (p *Pipeline) handleBlock(ctx context.Context, b domain.Block) {
+	s := p.stream(b.Key(), domain.StreamBlocks)
+	p.accept(ctx, s, s.quality.ObserveBlock(b), b.Nonce, "", b.ChainTime, b.ReceivedTime)
+}
+
+// accept records the incidents of verdict v for the event with sequence number
+// id and, unless v drops the event, updates the stream status. It reports
+// whether the event was kept.
+func (p *Pipeline) accept(ctx context.Context, s *stream, v quality.Verdict, id int64, price string,
+	exchTime, received time.Time) bool {
+	lag := received.Sub(exchTime)
+	p.metrics.TradeReceived(s.status.Exchange, s.status.Symbol, lag)
+	for _, inc := range v.Incidents {
+		p.record(ctx, inc)
+	}
+	if v.Drop {
+		return false
+	}
+	p.mu.Lock()
+	st := &s.status
+	st.Trades++
+	st.LastTradeID = id
+	st.LastPrice = price
+	st.LastExchangeTime = exchTime
+	st.LastReceivedTime = received
+	st.Lag = lag
+	p.mu.Unlock()
+	return true
 }
 
 // tick runs the time-driven work: staleness checks and flushing finished bars.
@@ -319,8 +341,11 @@ func (p *Pipeline) writeBar(ctx context.Context, b domain.Bar) {
 	}
 }
 
-// stream returns the state for key, creating it on first use.
-func (p *Pipeline) stream(key domain.StreamKey) *stream {
+// stream returns the state for key, creating it on first use. kind is the
+// stream's kind; it is the one place where trade and block streams differ:
+// a block stream's validator has no price check (and its aggregator is never
+// fed, see handleBlock).
+func (p *Pipeline) stream(key domain.StreamKey, kind domain.StreamKind) *stream {
 	p.mu.RLock()
 	s, ok := p.streams[key]
 	p.mu.RUnlock()
@@ -331,11 +356,15 @@ func (p *Pipeline) stream(key domain.StreamKey) *stream {
 	if d, ok := p.cfg.StaleAfter[key]; ok {
 		qcfg.StaleAfter = d
 	}
+	newValidator := quality.NewStream
+	if kind == domain.StreamBlocks {
+		newValidator = quality.NewBlockStream
+	}
 	s = &stream{
-		quality: quality.NewStream(key, qcfg),
+		quality: newValidator(key, qcfg),
 		agg:     bars.NewAggregator(key),
 		status: StreamStatus{
-			Exchange: key.Exchange, Symbol: key.Symbol,
+			Exchange: key.Exchange, Symbol: key.Symbol, Kind: kind,
 			Incidents: make(map[domain.IncidentKind]int),
 		},
 	}

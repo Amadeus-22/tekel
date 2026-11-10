@@ -418,3 +418,63 @@ func TestKey(t *testing.T) {
 		t.Error("Key() mismatch")
 	}
 }
+
+// block builds a KleverChain-like block: nonce n, a block every 4 s, received 500 ms later.
+func block(nonce int64) domain.Block {
+	at := t0.Add(time.Duration(nonce) * 4 * time.Second)
+	return domain.Block{
+		Chain: domain.ChainKlever, Network: "testnet", Nonce: nonce, Hash: fmt.Sprintf("h%d", nonce),
+		ChainTime: at, ReceivedTime: at.Add(500 * time.Millisecond),
+	}
+}
+
+// TestBlockStream runs the gap story of docs/adr/0002 over block nonces: the
+// rules are the trade rules, the wording names nonces and blocks.
+func TestBlockStream(t *testing.T) {
+	bkey := domain.StreamKey{Exchange: domain.ChainKlever, Symbol: "testnet"}
+	s := NewBlockStream(bkey, DefaultConfig())
+	s.Connected(t0)
+
+	for n := int64(1); n <= 3; n++ {
+		if v := s.ObserveBlock(block(n)); len(v.Incidents) != 0 || v.Drop {
+			t.Fatalf("block %d: %+v, want clean", n, v)
+		}
+	}
+
+	v := s.ObserveBlock(block(6))
+	if got := kinds(v.Incidents); len(got) != 1 || got[0] != domain.KindSequenceGap {
+		t.Fatalf("nonce jump: %v, want sequence_gap", got)
+	}
+	gap := v.Incidents[0]
+	if gap.Detail != "nonce jumped from 3 to 6 while connected (2 missing)" || gap.TradeID != 6 ||
+		!gap.Start.Equal(block(3).ChainTime) || !gap.End.Equal(block(6).ChainTime) || gap.Key() != bkey {
+		t.Errorf("gap = %+v", gap)
+	}
+
+	v = s.ObserveBlock(block(6))
+	if got := kinds(v.Incidents); !v.Drop || len(got) != 1 || got[0] != domain.KindDuplicate ||
+		v.Incidents[0].Detail != "nonce 6 already seen in the last 10000 blocks" {
+		t.Fatalf("replayed block: %+v, want a dropped duplicate", v)
+	}
+
+	late := block(7)
+	late.ReceivedTime = late.ChainTime.Add(3 * time.Second)
+	if got := kinds(s.ObserveBlock(late).Incidents); len(got) != 1 || got[0] != domain.KindClockSkew {
+		t.Errorf("late block: %v, want clock_skew", got)
+	}
+
+	// Disconnected while blocks 8..9 were produced: a known gap, not a silent one.
+	s.Disconnected(block(7).ReceivedTime.Add(time.Second))
+	inc, ok := s.Connected(block(10).ChainTime)
+	if !ok || inc.Kind != domain.KindDisconnect || !strings.Contains(inc.Detail, "last nonce before the gap: 7") {
+		t.Fatalf("reconnect: %+v %v, want a disconnect incident", inc, ok)
+	}
+	if v := s.ObserveBlock(block(10)); len(v.Incidents) != 0 {
+		t.Errorf("first block after reconnect: %v, want clean", kinds(v.Incidents))
+	}
+
+	stale, ok := s.CheckStale(block(10).ReceivedTime.Add(61 * time.Second))
+	if !ok || stale.Kind != domain.KindStaleStream || !strings.HasPrefix(stale.Detail, "no block for 1m1s") {
+		t.Errorf("stale = %+v %v", stale, ok)
+	}
+}

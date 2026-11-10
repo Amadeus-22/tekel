@@ -92,6 +92,7 @@ func (h *handler) readyz(w http.ResponseWriter, r *http.Request) {
 type streamJSON struct {
 	Exchange         string         `json:"exchange"`
 	Symbol           string         `json:"symbol"`
+	Kind             string         `json:"kind"`
 	Connected        bool           `json:"connected"`
 	Trades           uint64         `json:"trades"`
 	LastTradeID      int64          `json:"last_trade_id,omitzero"`
@@ -111,7 +112,7 @@ func (h *handler) streams(w http.ResponseWriter, _ *http.Request) {
 			counts[string(k)] = n
 		}
 		out = append(out, streamJSON{
-			Exchange: s.Exchange, Symbol: s.Symbol, Connected: s.Connected, Trades: s.Trades,
+			Exchange: s.Exchange, Symbol: s.Symbol, Kind: string(s.Kind), Connected: s.Connected, Trades: s.Trades,
 			LastTradeID: s.LastTradeID, LastPrice: s.LastPrice,
 			LastExchangeTime: s.LastExchangeTime, LastReceivedTime: s.LastReceivedTime,
 			LagSeconds: s.Lag.Seconds(), Incidents: counts,

@@ -29,7 +29,8 @@ tickguard makes that distinction live, per trade, and keeps the evidence.
 - Connects to **Binance** spot (`<symbol>@trade`), **Kraken** WebSocket v2
   (`trade` channel) and, optionally, **Mercado Bitcoin** (Brazil, BRL markets)
   for the symbols you configure; reconnects with jittered backoff and
-  resubscribes.
+  resubscribes. Optionally follows **KleverChain** blocks too, with the same
+  gap rules over the block nonce ([below](#kleverchain-blocks)).
 - Normalises every trade, keeping the exchange's exact decimal text for price and
   quantity (no `float64` anywhere near money).
 - Runs seven checks on every stream and stores each hit as an incident in SQLite:
@@ -43,6 +44,9 @@ tickguard makes that distinction live, per trade, and keeps the evidence.
   | `price_spike` | price is far from the rolling median (robust k × MAD rule) |
   | `stale_stream` | a connected stream saw no trade for too long |
   | `disconnect` | the connection was down; records the known-gap window |
+
+  Block streams (KleverChain) run all of them except `price_spike`, over the
+  block nonce.
 
 - Aggregates trades into one-minute OHLCV bars and writes them in the exact
   layout LEAN reads (`crypto/<market>/minute/<ticker>/<yyyymmdd>_trade.zip`),
@@ -65,12 +69,14 @@ flowchart LR
   B[Binance WS] --> CB[adapter/binance]
   K[Kraken WS] --> CK[adapter/kraken]
   MB[Mercado Bitcoin WS] --> CM[adapter/mercadobitcoin]
-  CB -- events --> P[app.Pipeline]
-  CK -- events --> P
-  CM -- events --> P
+  KN[Klever node WS] --> CKL[adapter/klever]
+  CB -- trades --> P[app.Pipeline]
+  CK -- trades --> P
+  CM -- trades --> P
+  CKL -- blocks --> P
   P --> V[domain/quality validators]
   V --> I[(SQLite incidents)]
-  P --> A[domain/bars aggregator]
+  P -- trades only --> A[domain/bars aggregator]
   A --> L[adapter/leanfs LEAN zip writer]
   P --> M[/metrics/]
   H[adapter/httpapi] --> I
@@ -161,6 +167,25 @@ e.g. `TICKGUARD_STALE_AFTER_OVERRIDES=mercadobitcoin:ETH-BRL=10m`. Mercado
 Bitcoin stamps trades in whole seconds, so its `tickguard_feed_lag_seconds`
 reads up to one second high.
 
+### KleverChain blocks
+
+Set `TICKGUARD_KLEVER_NETWORK=testnet` to follow every block of the Klever
+testnet through the public node's WebSocket (`/subscribe`, `blocks`). The
+stream shows up as `klever:testnet` with `"kind": "blocks"`: `trades` counts
+blocks and `last_trade_id` is the last block nonce. A nonce jump while
+connected is a `sequence_gap` (the node drops events when its queues are
+full), a dropped connection a `disconnect`, no block for too long a
+`stale_stream`. Blocks have no price: no `price_spike`, no LEAN files.
+
+A block comes every 4 s, so a tighter stale threshold suits it:
+`TICKGUARD_STALE_AFTER_OVERRIDES=klever:testnet=20s`.
+
+For mainnet set `TICKGUARD_KLEVER_NETWORK=mainnet` **and**
+`TICKGUARD_KLEVER_URL` to a node that serves `/subscribe`: the public
+`node.mainnet.klever.org` does not (404). A node that serves another chain than
+the configured network stops tickguard with an error. Design and sources:
+[ADR 0007](docs/adr/0007-klever-block-feed.md).
+
 ## Audit existing LEAN data
 
 `tickguard audit` checks LEAN trade data already on disk, whoever wrote it. It
@@ -242,6 +267,8 @@ once. Durations use Go syntax (`500ms`, `30s`, `5m`).
 | `TICKGUARD_KRAKEN_URL` | `wss://ws.kraken.com/v2` | Kraken WebSocket v2 URL |
 | `TICKGUARD_MERCADOBITCOIN_SYMBOLS` | — (disabled) | Mercado Bitcoin markets, e.g. `BTC-BRL,USDT-BRL`; LEAN needs a custom market (see above) |
 | `TICKGUARD_MERCADOBITCOIN_URL` | `wss://ws.mercadobitcoin.net/ws` | Mercado Bitcoin WebSocket URL |
+| `TICKGUARD_KLEVER_NETWORK` | — (disabled) | `mainnet` or `testnet`: follow KleverChain blocks (see above) |
+| `TICKGUARD_KLEVER_URL` | public testnet node | Klever node `/subscribe` WebSocket URL; required for `mainnet` |
 | `TICKGUARD_CLOCK_SKEW` | `2s` | `clock_skew` threshold |
 | `TICKGUARD_OUT_OF_ORDER_TOLERANCE` | `0s` | how far exchange time may go backwards |
 | `TICKGUARD_STALE_AFTER` | `60s` | `stale_stream` threshold |
@@ -260,7 +287,7 @@ JSON in and out. Errors are `{"error":{"code":"snake_case","message":"..."}}`.
 
 | Method & path | Returns |
 |---|---|
-| `GET /v1/streams` | every stream: `connected`, `trades`, `last_trade_id`, `last_price`, `last_exchange_time`, `last_received_time`, `lag_seconds`, `incidents` (counts by kind since start) |
+| `GET /v1/streams` | every stream: `kind` (`trades` or `blocks`), `connected`, `trades`, `last_trade_id`, `last_price`, `last_exchange_time`, `last_received_time`, `lag_seconds`, `incidents` (counts by kind since start) |
 | `GET /v1/incidents` | stored incidents, newest first. Query: `exchange`, `symbol`, `kind`, `since` (RFC 3339), `limit` (1–1000, default 100) |
 | `GET /healthz` | `200` while the process runs |
 | `GET /readyz` | `200` when the incident database answers, else `503 not_ready` |
@@ -277,7 +304,7 @@ JSON in and out. Errors are `{"error":{"code":"snake_case","message":"..."}}`.
 
 | Metric | Type | Labels |
 |---|---|---|
-| `tickguard_trades_total` | counter | `exchange` (`binance`, `kraken`, `mercadobitcoin`), `symbol` |
+| `tickguard_trades_total` | counter (blocks for `klever`) | `exchange` (`binance`, `kraken`, `mercadobitcoin`, `klever`), `symbol` |
 | `tickguard_incidents_total` | counter | `exchange`, `symbol`, `kind` |
 | `tickguard_feed_lag_seconds` | histogram of received − exchange time | `exchange`, `symbol` |
 | `tickguard_connected` | gauge, 1 while subscribed | `exchange` |
@@ -298,12 +325,14 @@ Go runtime and process metrics are included.
 - [0005 — `tickguard audit`: quality checks over existing LEAN data](docs/adr/0005-audit-lean-data.md),
   with the LEAN sources for every layout.
 - [0006 — Mercado Bitcoin adapter over its public WebSocket](docs/adr/0006-mercado-bitcoin-adapter.md)
+- [0007 — KleverChain block feed: block streams next to trade streams](docs/adr/0007-klever-block-feed.md)
 
 Exchange message formats are cited next to the decoders:
 [Binance WebSocket Streams](https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md),
 [Kraken WebSocket v2 trade](https://docs.kraken.com/api/docs/websocket-v2/trade),
 [Mercado Bitcoin WebSocket API](https://ws.mercadobitcoin.net/docs/v0/) and
-[REST API v4](https://api.mercadobitcoin.net/api/v4/docs) (rate limits).
+[REST API v4](https://api.mercadobitcoin.net/api/v4/docs) (rate limits) and the
+[Klever node WebSocket API](https://github.com/klever-io/klever-go/blob/develop/websocket/README.md).
 
 ## Roadmap
 
