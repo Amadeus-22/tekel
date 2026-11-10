@@ -87,28 +87,21 @@ type Feed struct {
 
 // New validates cfg and returns a feed.
 func New(cfg Config) (*Feed, error) {
-	if len(cfg.Symbols) == 0 {
-		return nil, errors.New("mercadobitcoin: at least one symbol is required")
+	if err := wsconn.CheckSymbols(Exchange, cfg.Symbols, symbolRE, "look like BTC-BRL"); err != nil {
+		return nil, err
 	}
 	ids := make(map[string]string, len(cfg.Symbols))
 	for _, s := range cfg.Symbols {
-		if !symbolRE.MatchString(s) {
-			return nil, fmt.Errorf("mercadobitcoin: symbol %q must look like BTC-BRL", s)
-		}
 		ids[MarketID(s)] = s
 	}
 	if cfg.Logger == nil {
 		return nil, errors.New("mercadobitcoin: logger is required")
 	}
-	if cfg.Conn.ReadTimeout == 0 || cfg.Conn.ReadTimeout > defaultReadTimeout {
-		cfg.Conn.ReadTimeout = defaultReadTimeout
-	}
+	cfg.Conn.CapReadTimeout(defaultReadTimeout)
 	cfg.Conn.PingInterval = pingInterval
 	cfg.Conn.AppPing = appPing
 	cfg.Conn.Header = http.Header{"User-Agent": {userAgent}}
-	cfg.Conn.Name = Exchange
-	cfg.Conn.URL = cfg.URL
-	cfg.Conn.Logger = cfg.Logger
+	cfg.Conn.Bind(Exchange, cfg.URL, cfg.Logger)
 	return &Feed{cfg: cfg, ids: ids, malformed: wsconn.NewMalformed(Exchange, cfg.Logger, cfg.DecodeErrors)}, nil
 }
 

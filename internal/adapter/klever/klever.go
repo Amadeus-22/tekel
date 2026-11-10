@@ -96,13 +96,9 @@ func New(cfg Config) (*Feed, error) {
 	if cfg.Logger == nil {
 		return nil, errors.New("klever: logger is required")
 	}
-	if cfg.Conn.ReadTimeout == 0 || cfg.Conn.ReadTimeout > defaultReadTimeout {
-		cfg.Conn.ReadTimeout = defaultReadTimeout
-	}
+	cfg.Conn.CapReadTimeout(defaultReadTimeout)
 	cfg.Conn.MaxMessageBytes = max(cfg.Conn.MaxMessageBytes, maxMessageBytes)
-	cfg.Conn.Name = Chain
-	cfg.Conn.URL = cfg.URL
-	cfg.Conn.Logger = cfg.Logger
+	cfg.Conn.Bind(Chain, cfg.URL, cfg.Logger)
 	return &Feed{cfg: cfg, chainID: chainID,
 		malformed: wsconn.NewMalformed(Chain, cfg.Logger, cfg.DecodeErrors)}, nil
 }

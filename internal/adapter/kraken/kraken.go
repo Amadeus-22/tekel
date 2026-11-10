@@ -59,23 +59,14 @@ type Feed struct {
 
 // New validates cfg and returns a feed.
 func New(cfg Config) (*Feed, error) {
-	if len(cfg.Symbols) == 0 {
-		return nil, errors.New("kraken: at least one symbol is required")
-	}
-	for _, s := range cfg.Symbols {
-		if !symbolRE.MatchString(s) {
-			return nil, fmt.Errorf("kraken: symbol %q must look like BTC/USD", s)
-		}
+	if err := wsconn.CheckSymbols(Exchange, cfg.Symbols, symbolRE, "look like BTC/USD"); err != nil {
+		return nil, err
 	}
 	if cfg.Logger == nil {
 		return nil, errors.New("kraken: logger is required")
 	}
-	if cfg.Conn.ReadTimeout == 0 || cfg.Conn.ReadTimeout > defaultReadTimeout {
-		cfg.Conn.ReadTimeout = defaultReadTimeout
-	}
-	cfg.Conn.Name = Exchange
-	cfg.Conn.URL = cfg.URL
-	cfg.Conn.Logger = cfg.Logger
+	cfg.Conn.CapReadTimeout(defaultReadTimeout)
+	cfg.Conn.Bind(Exchange, cfg.URL, cfg.Logger)
 	return &Feed{cfg: cfg, malformed: wsconn.NewMalformed(Exchange, cfg.Logger, cfg.DecodeErrors)}, nil
 }
 

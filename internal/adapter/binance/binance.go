@@ -52,20 +52,13 @@ type Feed struct {
 
 // New validates cfg and returns a feed.
 func New(cfg Config) (*Feed, error) {
-	if len(cfg.Symbols) == 0 {
-		return nil, errors.New("binance: at least one symbol is required")
-	}
-	for _, s := range cfg.Symbols {
-		if !symbolRE.MatchString(s) {
-			return nil, fmt.Errorf("binance: symbol %q must be uppercase letters and digits, e.g. BTCUSDT", s)
-		}
+	if err := wsconn.CheckSymbols(Exchange, cfg.Symbols, symbolRE, "be uppercase letters and digits, e.g. BTCUSDT"); err != nil {
+		return nil, err
 	}
 	if cfg.Logger == nil {
 		return nil, errors.New("binance: logger is required")
 	}
-	cfg.Conn.Name = Exchange
-	cfg.Conn.URL = StreamURL(cfg.BaseURL, cfg.Symbols)
-	cfg.Conn.Logger = cfg.Logger
+	cfg.Conn.Bind(Exchange, StreamURL(cfg.BaseURL, cfg.Symbols), cfg.Logger)
 	return &Feed{cfg: cfg, malformed: wsconn.NewMalformed(Exchange, cfg.Logger, cfg.DecodeErrors)}, nil
 }
 
