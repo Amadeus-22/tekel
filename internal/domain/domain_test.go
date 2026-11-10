@@ -142,7 +142,7 @@ func TestParseIncidentKind(t *testing.T) {
 func validTrade() Trade {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	return Trade{
-		Exchange: ExchangeBinance, Symbol: "BTCUSDT", TradeID: 1,
+		Exchange: "binance", Symbol: "BTCUSDT", TradeID: 1,
 		Price: MustDecimal("100"), Qty: MustDecimal("0.5"), Side: SideBuy,
 		ExchangeTime: now, ReceivedTime: now,
 	}
@@ -198,7 +198,7 @@ func TestBlockValidate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := Block{Chain: ChainKlever, Network: "testnet", Nonce: 13844596, Hash: "70220820", TxCount: 2,
+			b := Block{Chain: "klever", Network: "testnet", Nonce: 13844596, Hash: "70220820", TxCount: 2,
 				ChainTime: now, ReceivedTime: now}
 			tt.mutate(&b)
 			err := b.Validate()
@@ -210,20 +210,20 @@ func TestBlockValidate(t *testing.T) {
 			}
 		})
 	}
-	if got := (Block{Chain: ChainKlever, Network: "testnet"}).Key(); got != (StreamKey{Exchange: "klever", Symbol: "testnet"}) {
+	if got := (Block{Chain: "klever", Network: "testnet"}).Key(); got != (StreamKey{Exchange: "klever", Symbol: "testnet"}) {
 		t.Errorf("Block.Key() = %v", got)
 	}
 }
 
 func TestKeys(t *testing.T) {
-	want := StreamKey{Exchange: ExchangeKraken, Symbol: "BTC/USD"}
-	if got := (Trade{Exchange: ExchangeKraken, Symbol: "BTC/USD"}).Key(); got != want {
+	want := StreamKey{Exchange: "kraken", Symbol: "BTC/USD"}
+	if got := (Trade{Exchange: "kraken", Symbol: "BTC/USD"}).Key(); got != want {
 		t.Errorf("Trade.Key() = %v", got)
 	}
-	if got := (Incident{Exchange: ExchangeKraken, Symbol: "BTC/USD"}).Key(); got != want {
+	if got := (Incident{Exchange: "kraken", Symbol: "BTC/USD"}).Key(); got != want {
 		t.Errorf("Incident.Key() = %v", got)
 	}
-	if got := (Bar{Exchange: ExchangeKraken, Symbol: "BTC/USD"}).Key(); got != want {
+	if got := (Bar{Exchange: "kraken", Symbol: "BTC/USD"}).Key(); got != want {
 		t.Errorf("Bar.Key() = %v", got)
 	}
 	if want.String() != "kraken:BTC/USD" {

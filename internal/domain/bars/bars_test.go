@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	key = domain.StreamKey{Exchange: domain.ExchangeKraken, Symbol: "BTC/USD"}
+	key = domain.StreamKey{Exchange: "kraken", Symbol: "BTC/USD"}
 	day = time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 )
 

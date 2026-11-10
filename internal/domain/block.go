@@ -5,11 +5,6 @@ import (
 	"time"
 )
 
-// ChainKlever identifies the KleverChain block stream. It takes the place of
-// the exchange in a StreamKey; the network ("mainnet", "testnet") takes the
-// place of the symbol. See docs/adr/0007.
-const ChainKlever = "klever"
-
 // StreamKind says what a stream carries. A feed declares it once; the pipeline
 // reads it when it registers the feed's streams.
 type StreamKind string

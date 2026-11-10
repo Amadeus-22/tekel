@@ -22,6 +22,10 @@ import (
 	"github.com/Amadeus-22/tickguard/internal/domain"
 )
 
+// Exchange identifies Binance in stream keys, logs and metrics. It doubles as
+// the LEAN market name, so it must match LEAN's Common/Market.cs constant.
+const Exchange = "binance"
+
 // DefaultBaseURL is the public market-data endpoint.
 const DefaultBaseURL = "wss://stream.binance.com:9443"
 
@@ -59,10 +63,10 @@ func New(cfg Config) (*Feed, error) {
 	if cfg.Logger == nil {
 		return nil, errors.New("binance: logger is required")
 	}
-	cfg.Conn.Name = domain.ExchangeBinance
+	cfg.Conn.Name = Exchange
 	cfg.Conn.URL = StreamURL(cfg.BaseURL, cfg.Symbols)
 	cfg.Conn.Logger = cfg.Logger
-	return &Feed{cfg: cfg, malformed: wsconn.NewMalformed(domain.ExchangeBinance, cfg.Logger, cfg.DecodeErrors)}, nil
+	return &Feed{cfg: cfg, malformed: wsconn.NewMalformed(Exchange, cfg.Logger, cfg.DecodeErrors)}, nil
 }
 
 // StreamURL builds the combined-stream URL. Subscribing through the URL means a
@@ -78,7 +82,7 @@ func StreamURL(base string, symbols []string) string {
 }
 
 // Exchange implements app.Feed.
-func (f *Feed) Exchange() string { return domain.ExchangeBinance }
+func (f *Feed) Exchange() string { return Exchange }
 
 // Symbols implements app.Feed.
 func (f *Feed) Symbols() []string { return append([]string(nil), f.cfg.Symbols...) }
@@ -90,10 +94,10 @@ func (f *Feed) Kind() domain.StreamKind { return domain.StreamTrades }
 func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 	return wsconn.Run(ctx, f.cfg.Conn, wsconn.Handlers{
 		Up: func(ctx context.Context, at time.Time) error {
-			return emit(ctx, app.Event{Kind: app.EventConnected, Exchange: domain.ExchangeBinance, At: at})
+			return emit(ctx, app.Event{Kind: app.EventConnected, Exchange: Exchange, At: at})
 		},
 		Down: func(ctx context.Context, at time.Time, cause error) error {
-			return emit(ctx, app.Event{Kind: app.EventDisconnected, Exchange: domain.ExchangeBinance, At: at, Err: cause})
+			return emit(ctx, app.Event{Kind: app.EventDisconnected, Exchange: Exchange, At: at, Err: cause})
 		},
 		Message: func(ctx context.Context, msg []byte, received time.Time) error {
 			t, ok, err := Decode(msg, received)
@@ -104,7 +108,7 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 			if !ok {
 				return nil
 			}
-			return emit(ctx, app.Event{Kind: app.EventTrade, Exchange: domain.ExchangeBinance, At: received, Trade: t})
+			return emit(ctx, app.Event{Kind: app.EventTrade, Exchange: Exchange, At: received, Trade: t})
 		},
 	})
 }
@@ -172,7 +176,7 @@ func Decode(msg []byte, received time.Time) (t domain.Trade, ok bool, err error)
 		side = domain.SideSell
 	}
 	t = domain.Trade{
-		Exchange: domain.ExchangeBinance, Symbol: ev.Symbol, TradeID: *ev.TradeID,
+		Exchange: Exchange, Symbol: ev.Symbol, TradeID: *ev.TradeID,
 		Price: price, Qty: qty, Side: side,
 		ExchangeTime: time.UnixMilli(*ev.TradeTime).UTC(), ReceivedTime: received.UTC(),
 	}

@@ -36,6 +36,11 @@ import (
 	"github.com/Amadeus-22/tickguard/internal/domain"
 )
 
+// Chain identifies the KleverChain block stream. It takes the place of the
+// exchange in a StreamKey; the network ("mainnet", "testnet") takes the place
+// of the symbol. See docs/adr/0007.
+const Chain = "klever"
+
 // TestnetURL is the public testnet node's subscription endpoint. The public
 // mainnet node (node.mainnet.klever.org) answers 404 on /subscribe (checked
 // 2026-11-10), so mainnet needs the URL of a node that serves it.
@@ -95,15 +100,15 @@ func New(cfg Config) (*Feed, error) {
 		cfg.Conn.ReadTimeout = defaultReadTimeout
 	}
 	cfg.Conn.MaxMessageBytes = max(cfg.Conn.MaxMessageBytes, maxMessageBytes)
-	cfg.Conn.Name = domain.ChainKlever
+	cfg.Conn.Name = Chain
 	cfg.Conn.URL = cfg.URL
 	cfg.Conn.Logger = cfg.Logger
 	return &Feed{cfg: cfg, chainID: chainID,
-		malformed: wsconn.NewMalformed(domain.ChainKlever, cfg.Logger, cfg.DecodeErrors)}, nil
+		malformed: wsconn.NewMalformed(Chain, cfg.Logger, cfg.DecodeErrors)}, nil
 }
 
 // Exchange implements app.Feed.
-func (f *Feed) Exchange() string { return domain.ChainKlever }
+func (f *Feed) Exchange() string { return Chain }
 
 // Symbols implements app.Feed: the one stream is the network.
 func (f *Feed) Symbols() []string { return []string{f.cfg.Network} }
@@ -124,7 +129,7 @@ func NewSubscribeRequest() SubscribeRequest {
 
 // Run implements app.Feed.
 func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
-	ch := domain.ChainKlever
+	ch := Chain
 	return wsconn.Run(ctx, f.cfg.Conn, wsconn.Handlers{
 		Subscribe: func(_ context.Context, conn *websocket.Conn) error {
 			return conn.WriteJSON(NewSubscribeRequest())
@@ -214,7 +219,7 @@ func Decode(msg []byte, received time.Time, network string) (Message, error) {
 		return Message{}, errors.New("decode block: missing timestamp")
 	}
 	b := domain.Block{
-		Chain: domain.ChainKlever, Network: network, Nonce: int64(*d.Nonce), Hash: d.Hash, TxCount: d.TxCount,
+		Chain: Chain, Network: network, Nonce: int64(*d.Nonce), Hash: d.Hash, TxCount: d.TxCount,
 		ChainTime: time.UnixMilli(*d.Timestamp).UTC(), ReceivedTime: received.UTC(),
 	}
 	if err := b.Validate(); err != nil {

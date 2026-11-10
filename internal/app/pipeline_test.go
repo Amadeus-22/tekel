@@ -153,7 +153,7 @@ func (m *fakeMetrics) SinkError(sink string) {
 
 // --- helpers ----------------------------------------------------------------
 
-const ex, sym = domain.ExchangeBinance, "BTCUSDT"
+const ex, sym = "binance", "BTCUSDT"
 
 func tradeEv(id int64, at time.Duration, price string) Event {
 	ts := t0.Add(at)
@@ -279,7 +279,7 @@ func TestPipelineEndToEnd(t *testing.T) {
 // checks, never a bar, and its status says kind=blocks, while a trade feed in the
 // same pipeline is unaffected.
 func TestPipelineBlockStream(t *testing.T) {
-	const chain, network = domain.ChainKlever, "testnet"
+	const chain, network = "klever", "testnet"
 	blockEv := func(nonce int64, at time.Duration) Event {
 		ts := t0.Add(at)
 		return Event{Kind: EventBlock, Exchange: chain, At: ts, Block: domain.Block{
@@ -321,10 +321,10 @@ func TestPipelineBlockStream(t *testing.T) {
 
 func TestStreamsSnapshotIsACopy(t *testing.T) {
 	f := newFakeFeed(ex, []string{"ETHUSDT", sym}, connEv(EventConnected, 0))
-	f2 := newFakeFeed(domain.ExchangeKraken, []string{"BTC/USD"})
+	f2 := newFakeFeed("kraken", []string{"BTC/USD"})
 	h := newHarness(t, testConfig(), f, f2)
 	st := h.p.Streams()
-	if len(st) != 3 || st[0].Symbol != "BTCUSDT" || st[1].Symbol != "ETHUSDT" || st[2].Exchange != domain.ExchangeKraken {
+	if len(st) != 3 || st[0].Symbol != "BTCUSDT" || st[1].Symbol != "ETHUSDT" || st[2].Exchange != "kraken" {
 		t.Fatalf("Streams() order = %+v", st)
 	}
 	st[0].Incidents[domain.KindDuplicate] = 99
@@ -463,7 +463,7 @@ func TestPipelineTickFlagsStaleAndFlushesBars(t *testing.T) {
 func TestPipelineFeedFailureStopsRun(t *testing.T) {
 	bad := newFakeFeed(ex, []string{sym})
 	bad.err = errors.New("bad symbol")
-	good := newFakeFeed(domain.ExchangeKraken, []string{"BTC/USD"})
+	good := newFakeFeed("kraken", []string{"BTC/USD"})
 	h := newHarness(t, testConfig(), bad, good)
 	err := h.p.Run(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "feed binance: bad symbol") {

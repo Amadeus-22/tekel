@@ -116,7 +116,7 @@ func buildFeeds(cfg config.Config, log *slog.Logger, m *metrics.Metrics) ([]app.
 	if len(cfg.BinanceSymbols) > 0 {
 		f, err := binance.New(binance.Config{
 			BaseURL: cfg.BinanceURL, Symbols: cfg.BinanceSymbols, Conn: wsconn.DefaultConfig(), Logger: log,
-			DecodeErrors: func() { m.DecodeError(domain.ExchangeBinance) },
+			DecodeErrors: func() { m.DecodeError(binance.Exchange) },
 		})
 		if err != nil {
 			return nil, err
@@ -126,7 +126,7 @@ func buildFeeds(cfg config.Config, log *slog.Logger, m *metrics.Metrics) ([]app.
 	if len(cfg.KrakenSymbols) > 0 {
 		f, err := kraken.New(kraken.Config{
 			URL: cfg.KrakenURL, Symbols: cfg.KrakenSymbols, Conn: wsconn.DefaultConfig(), Logger: log,
-			DecodeErrors: func() { m.DecodeError(domain.ExchangeKraken) },
+			DecodeErrors: func() { m.DecodeError(kraken.Exchange) },
 		})
 		if err != nil {
 			return nil, err
@@ -136,7 +136,7 @@ func buildFeeds(cfg config.Config, log *slog.Logger, m *metrics.Metrics) ([]app.
 	if len(cfg.MercadoBitcoinSymbols) > 0 {
 		f, err := mercadobitcoin.New(mercadobitcoin.Config{
 			URL: cfg.MercadoBitcoinURL, Symbols: cfg.MercadoBitcoinSymbols, Conn: wsconn.DefaultConfig(), Logger: log,
-			DecodeErrors: func() { m.DecodeError(domain.ExchangeMercadoBitcoin) },
+			DecodeErrors: func() { m.DecodeError(mercadobitcoin.Exchange) },
 		})
 		if err != nil {
 			return nil, err
@@ -146,7 +146,7 @@ func buildFeeds(cfg config.Config, log *slog.Logger, m *metrics.Metrics) ([]app.
 	if cfg.KleverNetwork != "" {
 		f, err := klever.New(klever.Config{
 			URL: cfg.KleverURL, Network: cfg.KleverNetwork, Conn: wsconn.DefaultConfig(), Logger: log,
-			DecodeErrors: func() { m.DecodeError(domain.ChainKlever) },
+			DecodeErrors: func() { m.DecodeError(klever.Chain) },
 		})
 		if err != nil {
 			return nil, err

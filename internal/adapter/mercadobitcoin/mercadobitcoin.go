@@ -34,6 +34,12 @@ import (
 	"github.com/Amadeus-22/tickguard/internal/domain"
 )
 
+// Exchange identifies Mercado Bitcoin in stream keys, logs and metrics. It
+// doubles as the LEAN market name; LEAN has no Mercado Bitcoin market, so
+// "mercadobitcoin" must be registered in LEAN as a custom market (Market.Add)
+// before a backtest can read it; see docs/adr/0006.
+const Exchange = "mercadobitcoin"
+
 // DefaultURL is the production WebSocket endpoint.
 const DefaultURL = "wss://ws.mercadobitcoin.net/ws"
 
@@ -100,14 +106,14 @@ func New(cfg Config) (*Feed, error) {
 	cfg.Conn.PingInterval = pingInterval
 	cfg.Conn.AppPing = appPing
 	cfg.Conn.Header = http.Header{"User-Agent": {userAgent}}
-	cfg.Conn.Name = domain.ExchangeMercadoBitcoin
+	cfg.Conn.Name = Exchange
 	cfg.Conn.URL = cfg.URL
 	cfg.Conn.Logger = cfg.Logger
-	return &Feed{cfg: cfg, ids: ids, malformed: wsconn.NewMalformed(domain.ExchangeMercadoBitcoin, cfg.Logger, cfg.DecodeErrors)}, nil
+	return &Feed{cfg: cfg, ids: ids, malformed: wsconn.NewMalformed(Exchange, cfg.Logger, cfg.DecodeErrors)}, nil
 }
 
 // Exchange implements app.Feed.
-func (f *Feed) Exchange() string { return domain.ExchangeMercadoBitcoin }
+func (f *Feed) Exchange() string { return Exchange }
 
 // Symbols implements app.Feed.
 func (f *Feed) Symbols() []string { return append([]string(nil), f.cfg.Symbols...) }
@@ -136,7 +142,7 @@ func NewSubscribeRequest(symbol string) SubscribeRequest {
 
 // Run implements app.Feed.
 func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
-	ex := domain.ExchangeMercadoBitcoin
+	ex := Exchange
 	return wsconn.Run(ctx, f.cfg.Conn, wsconn.Handlers{
 		Subscribe: func(_ context.Context, conn *websocket.Conn) error {
 			for _, s := range f.cfg.Symbols {
@@ -264,7 +270,7 @@ func (d tradeData) trade(symbol string, received time.Time) (domain.Trade, error
 		return domain.Trade{}, err
 	}
 	t := domain.Trade{
-		Exchange: domain.ExchangeMercadoBitcoin, Symbol: symbol, TradeID: *d.TID,
+		Exchange: Exchange, Symbol: symbol, TradeID: *d.TID,
 		Price: price, Qty: qty, Side: side,
 		ExchangeTime: time.Unix(*d.Date, 0).UTC(), ReceivedTime: received.UTC(),
 	}
