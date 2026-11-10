@@ -272,7 +272,7 @@ once. Durations use Go syntax (`500ms`, `30s`, `5m`).
 | `TICKGUARD_CLOCK_SKEW` | `2s` | `clock_skew` threshold |
 | `TICKGUARD_OUT_OF_ORDER_TOLERANCE` | `0s` | how far exchange time may go backwards |
 | `TICKGUARD_STALE_AFTER` | `60s` | `stale_stream` threshold |
-| `TICKGUARD_STALE_AFTER_OVERRIDES` | — | per-stream thresholds, e.g. `kraken:ETH/USD=3m,binance:SOLUSDT=2m` |
+| `TICKGUARD_STALE_AFTER_OVERRIDES` | — | per-stream thresholds, e.g. `kraken:ETH/USD=3m,binance:SOLUSDT=2m`; an override for a stream no enabled feed carries stops startup |
 | `TICKGUARD_DUPLICATE_WINDOW` | `10000` | recent trade IDs remembered per stream |
 | `TICKGUARD_SPIKE_WINDOW` | `101` | prices in the rolling median |
 | `TICKGUARD_SPIKE_K` | `10` | allowed deviation in scaled MADs |

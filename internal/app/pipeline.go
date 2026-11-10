@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -143,6 +144,18 @@ func NewPipeline(cfg Config, d Deps) (*Pipeline, error) {
 		for _, sym := range f.Symbols() {
 			p.stream(domain.StreamKey{Exchange: f.Exchange(), Symbol: sym}, f.Kind())
 		}
+	}
+	// An override for a stream no feed carries is a typo or a disabled feed;
+	// ignoring it would leave the stream it was meant for on the default.
+	var unknown []string
+	for key := range cfg.StaleAfter {
+		if _, ok := p.streams[key]; !ok {
+			unknown = append(unknown, key.String())
+		}
+	}
+	if len(unknown) > 0 {
+		slices.Sort(unknown)
+		return nil, fmt.Errorf("new pipeline: stale override for %s matches no configured stream", strings.Join(unknown, ", "))
 	}
 	return p, nil
 }

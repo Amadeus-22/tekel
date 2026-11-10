@@ -521,3 +521,28 @@ func TestNewPipelineValidates(t *testing.T) {
 		})
 	}
 }
+
+func TestNewPipelineRejectsUnknownStaleOverride(t *testing.T) {
+	cfg := testConfig()
+	cfg.StaleAfter = map[domain.StreamKey]time.Duration{
+		{Exchange: ex, Symbol: sym}:         time.Minute, // matches the feed
+		{Exchange: ex, Symbol: "BTCUSD"}:    time.Minute, // typo
+		{Exchange: "kraken", Symbol: "ETH"}: time.Minute, // feed not configured
+	}
+	_, err := NewPipeline(cfg, Deps{
+		Feeds: []Feed{newFakeFeed(ex, []string{sym})}, Incidents: &fakeStore{}, Bars: &fakeSink{},
+		Metrics: newFakeMetrics(), Logger: slog.New(slog.DiscardHandler),
+	})
+	want := "new pipeline: stale override for binance:BTCUSD, kraken:ETH matches no configured stream"
+	if err == nil || err.Error() != want {
+		t.Fatalf("NewPipeline() = %v, want %q", err, want)
+	}
+
+	cfg.StaleAfter = map[domain.StreamKey]time.Duration{{Exchange: ex, Symbol: sym}: time.Minute}
+	if _, err := NewPipeline(cfg, Deps{
+		Feeds: []Feed{newFakeFeed(ex, []string{sym})}, Incidents: &fakeStore{}, Bars: &fakeSink{},
+		Metrics: newFakeMetrics(), Logger: slog.New(slog.DiscardHandler),
+	}); err != nil {
+		t.Errorf("override for a configured stream: %v", err)
+	}
+}
