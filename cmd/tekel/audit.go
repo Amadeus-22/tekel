@@ -6,20 +6,20 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/auditreport"
-	"github.com/Amadeus-22/tickguard/internal/adapter/leanfs"
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain/audit"
+	"github.com/Amadeus-22/tekel/internal/adapter/auditreport"
+	"github.com/Amadeus-22/tekel/internal/adapter/leanfs"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain/audit"
 )
 
-// Exit codes of "tickguard audit".
+// Exit codes of "tekel audit".
 const (
 	exitOK       = 0
 	exitIssues   = 1 // issues at or above --fail-on
 	exitUsageErr = 2 // bad arguments or unreadable path
 )
 
-const auditUsage = `usage: tickguard audit <path> [--format table|json] [--fail-on warn|error]
+const auditUsage = `usage: tekel audit <path> [--format table|json] [--fail-on warn|error]
 
 Audits LEAN trade data under <path> (a data folder, any sub-folder, or one zip).
 Exit status: 0 clean, 1 issues at or above --fail-on, 2 usage or I/O error.
@@ -48,26 +48,26 @@ func runAudit(ctx context.Context, args []string, stdout, stderr io.Writer) int 
 	}
 	threshold, err := audit.ParseSeverity(*failOn)
 	if err != nil || threshold == audit.Info {
-		fmt.Fprintf(stderr, "tickguard audit: --fail-on must be warn or error, got %q\n", *failOn)
+		fmt.Fprintf(stderr, "tekel audit: --fail-on must be warn or error, got %q\n", *failOn)
 		return exitUsageErr
 	}
 	if *format != auditreport.FormatTable && *format != auditreport.FormatJSON {
-		fmt.Fprintf(stderr, "tickguard audit: --format must be table or json, got %q\n", *format)
+		fmt.Fprintf(stderr, "tekel audit: --format must be table or json, got %q\n", *format)
 		return exitUsageErr
 	}
 
 	src, err := leanfs.NewSource(path)
 	if err != nil {
-		fmt.Fprintln(stderr, "tickguard audit:", err)
+		fmt.Fprintln(stderr, "tekel audit:", err)
 		return exitUsageErr
 	}
 	report, err := app.Audit(ctx, src, app.DefaultAuditConfig())
 	if err != nil {
-		fmt.Fprintln(stderr, "tickguard audit:", err)
+		fmt.Fprintln(stderr, "tekel audit:", err)
 		return exitUsageErr
 	}
 	if err := auditreport.Write(stdout, *format, report); err != nil {
-		fmt.Fprintln(stderr, "tickguard audit:", err)
+		fmt.Fprintln(stderr, "tekel audit:", err)
 		return exitUsageErr
 	}
 	if report.Fails(threshold) {

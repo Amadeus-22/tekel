@@ -20,9 +20,9 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 // Exchange identifies Kraken in stream keys, logs and metrics. It doubles as
@@ -138,7 +138,7 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 	})
 }
 
-// Message is the part of one decoded Kraken message tickguard acts on.
+// Message is the part of one decoded Kraken message Tekel acts on.
 type Message struct {
 	// Trades from a "trade" channel snapshot or update, in message order.
 	Trades []domain.Trade

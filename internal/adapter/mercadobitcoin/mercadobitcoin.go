@@ -29,9 +29,9 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 // Exchange identifies Mercado Bitcoin in stream keys, logs and metrics. It
@@ -50,13 +50,13 @@ const (
 	pingInterval = 5 * time.Second
 	// defaultReadTimeout tolerates two lost pongs.
 	defaultReadTimeout = 15 * time.Second
-	userAgent          = "tickguard (+https://github.com/Amadeus-22/tickguard)"
+	userAgent          = "tekel (+https://github.com/Amadeus-22/tekel)"
 )
 
 var appPing = []byte(`{"type":"ping"}`)
 
 // symbolRE is Mercado Bitcoin's REST spelling BASE-QUOTE ("BTC-BRL"). It is
-// the symbol tickguard reports and writes (LEAN ticker "btcbrl").
+// the symbol Tekel reports and writes (LEAN ticker "btcbrl").
 var symbolRE = regexp.MustCompile(`^[A-Z0-9]{1,12}-[A-Z0-9]{1,12}$`)
 
 // MarketID converts "BTC-BRL" to the WebSocket market id "BRLBTC" (quote
@@ -171,7 +171,7 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 	})
 }
 
-// Message is the part of one decoded message tickguard acts on.
+// Message is the part of one decoded message Tekel acts on.
 type Message struct {
 	// Trade is set for a "trade" event.
 	Trade *domain.Trade

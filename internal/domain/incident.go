@@ -45,7 +45,7 @@ type Incident struct {
 	Exchange string
 	Symbol   string
 	Kind     IncidentKind
-	// DetectedAt is when tickguard noticed the problem.
+	// DetectedAt is when Tekel noticed the problem.
 	DetectedAt time.Time
 	// Start and End bound the affected window when there is one (gaps, staleness,
 	// disconnects). Both are zero for point incidents such as a duplicate.

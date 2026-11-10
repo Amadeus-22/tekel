@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/domain/audit"
+	"github.com/Amadeus-22/tekel/internal/domain/audit"
 )
 
 // TestWrittenFilesAuditRoundTrip: what the live writer produces, the offline

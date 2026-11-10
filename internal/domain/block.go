@@ -30,7 +30,7 @@ type Block struct {
 	TxCount int
 	// ChainTime is the block timestamp set by its producer.
 	ChainTime time.Time
-	// ReceivedTime is when tickguard read the block off the socket.
+	// ReceivedTime is when Tekel read the block off the socket.
 	ReceivedTime time.Time
 }
 

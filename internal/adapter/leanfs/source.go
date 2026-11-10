@@ -11,7 +11,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Amadeus-22/tickguard/internal/app"
+	"github.com/Amadeus-22/tekel/internal/app"
 )
 
 // Source implements app.LeanSource over a LEAN data directory or one zip file.

@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 var day = time.Date(2022, 12, 13, 0, 0, 0, 0, time.UTC)

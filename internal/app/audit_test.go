@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Amadeus-22/tickguard/internal/domain/audit"
+	"github.com/Amadeus-22/tekel/internal/domain/audit"
 )
 
 // fakeSource serves in-memory CSV content keyed by path; a nil entry fails to open.

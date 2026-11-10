@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/leanfs"
-	"github.com/Amadeus-22/tickguard/internal/app"
+	"github.com/Amadeus-22/tekel/internal/adapter/leanfs"
+	"github.com/Amadeus-22/tekel/internal/app"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden files")

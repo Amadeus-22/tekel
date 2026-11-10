@@ -14,9 +14,9 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/Amadeus-22/tickguard/internal/domain"
-	"github.com/Amadeus-22/tickguard/internal/domain/bars"
-	"github.com/Amadeus-22/tickguard/internal/domain/quality"
+	"github.com/Amadeus-22/tekel/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain/bars"
+	"github.com/Amadeus-22/tekel/internal/domain/quality"
 )
 
 // Sink names used in the SinkError metric.
@@ -191,7 +191,7 @@ func (p *Pipeline) Run(ctx context.Context) error {
 
 // emitter returns the Emit function for one feed. It stamps every event with
 // the feed's exchange, so feeds do not have to. A send that finds the buffer
-// full blocks, and the time spent blocked is reported as backpressure: tickguard
+// full blocks, and the time spent blocked is reported as backpressure: Tekel
 // never drops a trade to keep up (docs/adr/0003).
 func (p *Pipeline) emitter(events chan<- Event, exchange string) Emit {
 	return func(ctx context.Context, ev Event) error {

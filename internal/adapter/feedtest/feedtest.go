@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
-	"github.com/Amadeus-22/tickguard/internal/app"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/app"
 )
 
 // FastConn returns wsconn.DefaultConfig with millisecond reconnect backoff.

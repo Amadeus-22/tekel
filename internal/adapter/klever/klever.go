@@ -1,6 +1,6 @@
 // Package klever is the KleverChain block feed: one WebSocket connection to a
 // Klever node's /subscribe endpoint with the "blocks" subscription, re-sent
-// after every reconnect. Blocks carry a sequential nonce, so tickguard's gap
+// after every reconnect. Blocks carry a sequential nonce, so Tekel's gap
 // rules apply to them; they carry no price, so the feed is of kind blocks (no
 // price check, no LEAN bars). See docs/adr/0007-klever-block-feed.md.
 //
@@ -31,9 +31,9 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 // Chain identifies the KleverChain block stream. It takes the place of the
@@ -55,7 +55,7 @@ const (
 	maxMessageBytes = 8 << 20
 )
 
-// ChainIDs maps the networks tickguard knows to the chainID their blocks carry
+// ChainIDs maps the networks Tekel knows to the chainID their blocks carry
 // (GET /node/overview on node.mainnet.klever.org and node.testnet.klever.org,
 // 2026-11-10). A block from another chain stops the feed rather than being
 // recorded under the wrong network.
@@ -158,7 +158,7 @@ func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
 	})
 }
 
-// Message is the part of one decoded message tickguard acts on.
+// Message is the part of one decoded message Tekel acts on.
 type Message struct {
 	// Block is set for a "blocks" event; ChainID is the chain it came from.
 	Block   *domain.Block
@@ -178,7 +178,7 @@ type envelope struct {
 	Error string          `json:"error"`
 }
 
-// blockData is the part of "data" that tickguard reads. timestamp is the block
+// blockData is the part of "data" that Tekel reads. timestamp is the block
 // header's Unix seconds times 1000 (indexer/dataParser.go).
 type blockData struct {
 	Hash      string  `json:"hash"`

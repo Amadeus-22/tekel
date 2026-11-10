@@ -12,7 +12,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn/wstest"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsconn/wstest"
 )
 
 func testConfig(url string) Config {
@@ -213,7 +213,7 @@ func TestRunAppPingAndHeader(t *testing.T) {
 	cfg.PingInterval = 20 * time.Millisecond
 	cfg.ReadTimeout = 200 * time.Millisecond
 	cfg.AppPing = []byte(`{"type":"ping"}`)
-	cfg.Header = http.Header{"User-Agent": {"tickguard-test"}}
+	cfg.Header = http.Header{"User-Agent": {"tekel-test"}}
 	rec := newRecorder()
 	h := rec.handlers()
 	h.Subscribe = nil
@@ -235,7 +235,7 @@ func TestRunAppPingAndHeader(t *testing.T) {
 	if len(rec.downs) != 0 {
 		t.Errorf("connection dropped despite pong messages: %v", rec.downs)
 	}
-	if ua := srv.Header().Get("User-Agent"); ua != "tickguard-test" {
+	if ua := srv.Header().Get("User-Agent"); ua != "tekel-test" {
 		t.Errorf("User-Agent = %q", ua)
 	}
 }

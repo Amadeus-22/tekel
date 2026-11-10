@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/domain/quality"
+	"github.com/Amadeus-22/tekel/internal/domain/quality"
 )
 
 // ErrUnsupported marks a path that is not a LEAN trade file this package audits.

@@ -1,4 +1,4 @@
-// Package quality holds tickguard's data-quality validators.
+// Package quality holds Tekel's data-quality validators.
 //
 // A Stream carries the state of one exchange/symbol feed and turns each observed
 // event (a trade, a disconnect, a reconnect, the passage of time) into zero or more
@@ -13,7 +13,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 // madToSigma rescales the median absolute deviation so that, for normally
@@ -252,7 +252,7 @@ func (s *Stream) Disconnected(at time.Time) {
 }
 
 // OpenGap returns the disconnect incident for a gap that is still open at time
-// now, for example when tickguard shuts down while an exchange is unreachable.
+// now, for example when Tekel shuts down while an exchange is unreachable.
 func (s *Stream) OpenGap(now time.Time) (domain.Incident, bool) {
 	if s.connected || s.downSince.IsZero() {
 		return domain.Incident{}, false

@@ -1,5 +1,5 @@
-// Package domain holds tickguard's core types: trades, quality incidents and bars.
-// It is pure: no I/O and no imports from other tickguard packages.
+// Package domain holds Tekel's core types: trades, quality incidents and bars.
+// It is pure: no I/O and no imports from other Tekel packages.
 package domain
 
 import (
@@ -45,7 +45,7 @@ type Trade struct {
 	Qty          Decimal
 	Side         Side
 	ExchangeTime time.Time
-	// ReceivedTime is when tickguard read the message off the socket.
+	// ReceivedTime is when Tekel read the message off the socket.
 	ReceivedTime time.Time
 }
 

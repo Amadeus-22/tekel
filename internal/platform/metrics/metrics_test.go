@@ -9,8 +9,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 var _ app.Metrics = (*Metrics)(nil)
@@ -51,15 +51,15 @@ func TestMetricsRecordAndServe(t *testing.T) {
 	m.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/metrics", nil))
 	body, _ := io.ReadAll(rec.Body)
 	for _, name := range []string{
-		"tickguard_trades_total", "tickguard_incidents_total", "tickguard_feed_lag_seconds_bucket",
-		"tickguard_connected", "tickguard_decode_errors_total", "tickguard_backpressure_seconds_total",
-		"tickguard_late_trades_total", "tickguard_sink_errors_total", "go_goroutines",
+		"tekel_trades_total", "tekel_incidents_total", "tekel_feed_lag_seconds_bucket",
+		"tekel_connected", "tekel_decode_errors_total", "tekel_backpressure_seconds_total",
+		"tekel_late_trades_total", "tekel_sink_errors_total", "go_goroutines",
 	} {
 		if !strings.Contains(string(body), name) {
 			t.Errorf("/metrics lacks %s", name)
 		}
 	}
-	if !strings.Contains(string(body), `tickguard_feed_lag_seconds_sum{exchange="binance",symbol="BTCUSDT"} 0.04`) {
+	if !strings.Contains(string(body), `tekel_feed_lag_seconds_sum{exchange="binance",symbol="BTCUSDT"} 0.04`) {
 		t.Error("lag sum should be 0.04 (the negative observation clamps to 0)")
 	}
 	if m.Registry() == nil {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Amadeus-22/tickguard/internal/app"
+	"github.com/Amadeus-22/tekel/internal/app"
 )
 
 // fixtures are the LEAN sample zips described in internal/adapter/auditreport.
@@ -56,8 +56,8 @@ func TestAuditCommandUsageErrors(t *testing.T) {
 		args []string
 		msg  string
 	}{
-		{nil, "usage: tickguard audit"},
-		{[]string{fixtures, "extra"}, "usage: tickguard audit"},
+		{nil, "usage: tekel audit"},
+		{[]string{fixtures, "extra"}, "usage: tekel audit"},
 		{[]string{fixtures, "--format", "xml"}, "--format must be table or json"},
 		{[]string{fixtures, "--fail-on", "info"}, "--fail-on must be warn or error"},
 		{[]string{"--nope", fixtures}, "flag provided but not defined"},

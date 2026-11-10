@@ -1,7 +1,7 @@
-// Command tickguard collects public crypto trade streams, validates them as they
+// Command tekel collects public crypto trade streams, validates them as they
 // arrive, records every data-quality incident and writes LEAN minute bars.
 //
-// "tickguard audit <path>" instead audits LEAN data already on disk; see audit.go.
+// "tekel audit <path>" instead audits LEAN data already on disk; see audit.go.
 //
 // This file is wiring only: configuration, dependencies, start and shutdown.
 package main
@@ -19,18 +19,18 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/binance"
-	"github.com/Amadeus-22/tickguard/internal/adapter/httpapi"
-	"github.com/Amadeus-22/tickguard/internal/adapter/klever"
-	"github.com/Amadeus-22/tickguard/internal/adapter/kraken"
-	"github.com/Amadeus-22/tickguard/internal/adapter/leanfs"
-	"github.com/Amadeus-22/tickguard/internal/adapter/mercadobitcoin"
-	"github.com/Amadeus-22/tickguard/internal/adapter/sqlite"
-	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/platform/config"
-	"github.com/Amadeus-22/tickguard/internal/platform/logging"
-	"github.com/Amadeus-22/tickguard/internal/platform/metrics"
+	"github.com/Amadeus-22/tekel/internal/adapter/binance"
+	"github.com/Amadeus-22/tekel/internal/adapter/httpapi"
+	"github.com/Amadeus-22/tekel/internal/adapter/klever"
+	"github.com/Amadeus-22/tekel/internal/adapter/kraken"
+	"github.com/Amadeus-22/tekel/internal/adapter/leanfs"
+	"github.com/Amadeus-22/tekel/internal/adapter/mercadobitcoin"
+	"github.com/Amadeus-22/tekel/internal/adapter/sqlite"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/platform/config"
+	"github.com/Amadeus-22/tekel/internal/platform/logging"
+	"github.com/Amadeus-22/tekel/internal/platform/metrics"
 )
 
 func main() {
@@ -41,7 +41,7 @@ func main() {
 		os.Exit(code)
 	}
 	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "tickguard:", err)
+		fmt.Fprintln(os.Stderr, "tekel:", err)
 		os.Exit(1)
 	}
 }
@@ -101,11 +101,11 @@ func run() error {
 		return nil
 	})
 
-	log.Info("tickguard started", "http_addr", cfg.HTTPAddr, "data_dir", cfg.DataDir, "db_path", cfg.DBPath,
+	log.Info("tekel started", "http_addr", cfg.HTTPAddr, "data_dir", cfg.DataDir, "db_path", cfg.DBPath,
 		"binance_symbols", strings.Join(cfg.Binance.Symbols, ","), "kraken_symbols", strings.Join(cfg.Kraken.Symbols, ","),
 		"mercadobitcoin_symbols", strings.Join(cfg.MercadoBitcoin.Symbols, ","), "klever_network", strings.Join(cfg.Klever.Symbols, ","))
 	err = g.Wait()
-	log.Info("tickguard stopped", "error", fmt.Sprint(err))
+	log.Info("tekel stopped", "error", fmt.Sprint(err))
 	return err
 }
 

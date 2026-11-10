@@ -1,22 +1,22 @@
 # Local run: docker compose -f deploy/docker-compose.yml up --build
 services:
-  tickguard:
+  tekel:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    image: tickguard:dev
+    image: tekel:dev
     restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
-      TICKGUARD_LOG_LEVEL: info
-      TICKGUARD_BINANCE_SYMBOLS: BTCUSDT,ETHUSDT
-      TICKGUARD_KRAKEN_SYMBOLS: BTC/USD,ETH/USD
-      TICKGUARD_MERCADOBITCOIN_SYMBOLS: ""   # e.g. BTC-BRL; LEAN needs a custom market (ADR 0006)
+      TEKEL_LOG_LEVEL: info
+      TEKEL_BINANCE_SYMBOLS: BTCUSDT,ETHUSDT
+      TEKEL_KRAKEN_SYMBOLS: BTC/USD,ETH/USD
+      TEKEL_MERCADOBITCOIN_SYMBOLS: ""   # e.g. BTC-BRL; LEAN needs a custom market (ADR 0006)
     volumes:
-      # LEAN bars under /var/lib/tickguard/data, incidents in tickguard.db
-      - tickguard-data:/var/lib/tickguard
+      # LEAN bars under /var/lib/tekel/data, incidents in tekel.db
+      - tekel-data:/var/lib/tekel
     stop_grace_period: 15s
 
 volumes:
-  tickguard-data:
+  tekel-data:

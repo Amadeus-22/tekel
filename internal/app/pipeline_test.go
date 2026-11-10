@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 var t0 = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)

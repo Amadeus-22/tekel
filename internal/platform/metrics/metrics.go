@@ -1,4 +1,4 @@
-// Package metrics defines tickguard's Prometheus metrics on a private registry
+// Package metrics defines Tekel's Prometheus metrics on a private registry
 // and implements app.Metrics.
 package metrics
 
@@ -10,10 +10,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
-// Metrics holds every tickguard metric. All methods are safe for concurrent use.
+// Metrics holds every Tekel metric. All methods are safe for concurrent use.
 type Metrics struct {
 	reg *prometheus.Registry
 
@@ -33,36 +33,36 @@ func New() *Metrics {
 	m := &Metrics{
 		reg: prometheus.NewRegistry(),
 		trades: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "tickguard_trades_total",
+			Name: "tekel_trades_total",
 			Help: "Trades received, including duplicates.",
 		}, []string{"exchange", "symbol"}),
 		incidents: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "tickguard_incidents_total",
+			Name: "tekel_incidents_total",
 			Help: "Data-quality incidents detected, by kind.",
 		}, []string{"exchange", "symbol", "kind"}),
 		lag: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "tickguard_feed_lag_seconds",
+			Name:    "tekel_feed_lag_seconds",
 			Help:    "Received time minus exchange time of each trade (negative values clamp to 0).",
 			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
 		}, []string{"exchange", "symbol"}),
 		connected: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "tickguard_connected",
+			Name: "tekel_connected",
 			Help: "1 while the exchange connection is up and subscribed.",
 		}, []string{"exchange"}),
 		decodeErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "tickguard_decode_errors_total",
+			Name: "tekel_decode_errors_total",
 			Help: "Malformed exchange messages skipped.",
 		}, []string{"exchange"}),
 		backpressure: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "tickguard_backpressure_seconds_total",
+			Name: "tekel_backpressure_seconds_total",
 			Help: "Time feeds spent blocked because the pipeline buffer was full.",
 		}, []string{"exchange"}),
 		lateTrades: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "tickguard_late_trades_total",
+			Name: "tekel_late_trades_total",
 			Help: "Trades that arrived after their minute bar was written and are not in any bar.",
 		}, []string{"exchange", "symbol"}),
 		sinkErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "tickguard_sink_errors_total",
+			Name: "tekel_sink_errors_total",
 			Help: "Failed writes, by sink (incidents, bars).",
 		}, []string{"sink"}),
 	}

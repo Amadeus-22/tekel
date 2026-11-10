@@ -17,9 +17,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/wsconn"
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 // Exchange identifies Binance in stream keys, logs and metrics. It doubles as
@@ -120,7 +120,7 @@ type envelope struct {
 // E is the event time and T the trade time, both in milliseconds by default;
 // m is "Is the buyer the market maker?"; M is documented as "Ignore".
 //
-// Every key is declared, including E and M which tickguard does not use:
+// Every key is declared, including E and M which Tekel does not use:
 // encoding/json matches keys case-insensitively when no exact field exists, so
 // without them "E" (a number) would land in the "e" string field and "M" in "m".
 type tradeEvent struct {

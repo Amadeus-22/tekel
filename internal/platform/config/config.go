@@ -1,4 +1,4 @@
-// Package config reads tickguard's configuration from environment variables,
+// Package config reads Tekel's configuration from environment variables,
 // once, at startup. Every variable is documented in the README table.
 package config
 
@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain"
 )
 
 // Config is the validated process configuration. It holds plain values (and
-// domain stream keys); cmd/tickguard maps them onto the packages that use them.
+// domain stream keys); cmd/tekel maps them onto the packages that use them.
 type Config struct {
 	HTTPAddr        string
 	LogLevel        string
@@ -72,44 +72,44 @@ func FromEnv() (Config, error) { return Load(os.LookupEnv) }
 func Load(lookup Lookup) (Config, error) {
 	p := parser{lookup: lookup}
 	c := Config{
-		HTTPAddr:        p.str("TICKGUARD_HTTP_ADDR", "127.0.0.1:8080"),
-		LogLevel:        p.str("TICKGUARD_LOG_LEVEL", "info"),
-		DataDir:         p.str("TICKGUARD_DATA_DIR", "./data"),
-		DBPath:          p.str("TICKGUARD_DB_PATH", "./tickguard.db"),
-		ShutdownTimeout: p.duration("TICKGUARD_SHUTDOWN_TIMEOUT", 10*time.Second),
+		HTTPAddr:        p.str("TEKEL_HTTP_ADDR", "127.0.0.1:8080"),
+		LogLevel:        p.str("TEKEL_LOG_LEVEL", "info"),
+		DataDir:         p.str("TEKEL_DATA_DIR", "./data"),
+		DBPath:          p.str("TEKEL_DB_PATH", "./tekel.db"),
+		ShutdownTimeout: p.duration("TEKEL_SHUTDOWN_TIMEOUT", 10*time.Second),
 
-		Binance: p.feed("TICKGUARD_BINANCE_URL", "wss://stream.binance.com:9443",
-			"TICKGUARD_BINANCE_SYMBOLS", "BTCUSDT,ETHUSDT"),
-		Kraken: p.feed("TICKGUARD_KRAKEN_URL", "wss://ws.kraken.com/v2",
-			"TICKGUARD_KRAKEN_SYMBOLS", "BTC/USD,ETH/USD"),
-		MercadoBitcoin: p.feed("TICKGUARD_MERCADOBITCOIN_URL", "wss://ws.mercadobitcoin.net/ws",
-			"TICKGUARD_MERCADOBITCOIN_SYMBOLS", ""),
-		Klever: p.feed("TICKGUARD_KLEVER_URL", "", "TICKGUARD_KLEVER_NETWORK", ""),
+		Binance: p.feed("TEKEL_BINANCE_URL", "wss://stream.binance.com:9443",
+			"TEKEL_BINANCE_SYMBOLS", "BTCUSDT,ETHUSDT"),
+		Kraken: p.feed("TEKEL_KRAKEN_URL", "wss://ws.kraken.com/v2",
+			"TEKEL_KRAKEN_SYMBOLS", "BTC/USD,ETH/USD"),
+		MercadoBitcoin: p.feed("TEKEL_MERCADOBITCOIN_URL", "wss://ws.mercadobitcoin.net/ws",
+			"TEKEL_MERCADOBITCOIN_SYMBOLS", ""),
+		Klever: p.feed("TEKEL_KLEVER_URL", "", "TEKEL_KLEVER_NETWORK", ""),
 
-		ClockSkew:           p.duration("TICKGUARD_CLOCK_SKEW", 2*time.Second),
-		OutOfOrderTolerance: p.duration("TICKGUARD_OUT_OF_ORDER_TOLERANCE", 0),
-		StaleAfter:          p.duration("TICKGUARD_STALE_AFTER", 60*time.Second),
-		StaleAfterOverrides: p.overrides("TICKGUARD_STALE_AFTER_OVERRIDES"),
-		DuplicateWindow:     p.integer("TICKGUARD_DUPLICATE_WINDOW", 10_000),
-		SpikeWindow:         p.integer("TICKGUARD_SPIKE_WINDOW", 101),
-		SpikeK:              p.float("TICKGUARD_SPIKE_K", 10),
-		SpikeMinDeviation:   p.float("TICKGUARD_SPIKE_MIN_DEVIATION", 0.005),
+		ClockSkew:           p.duration("TEKEL_CLOCK_SKEW", 2*time.Second),
+		OutOfOrderTolerance: p.duration("TEKEL_OUT_OF_ORDER_TOLERANCE", 0),
+		StaleAfter:          p.duration("TEKEL_STALE_AFTER", 60*time.Second),
+		StaleAfterOverrides: p.overrides("TEKEL_STALE_AFTER_OVERRIDES"),
+		DuplicateWindow:     p.integer("TEKEL_DUPLICATE_WINDOW", 10_000),
+		SpikeWindow:         p.integer("TEKEL_SPIKE_WINDOW", 101),
+		SpikeK:              p.float("TEKEL_SPIKE_K", 10),
+		SpikeMinDeviation:   p.float("TEKEL_SPIKE_MIN_DEVIATION", 0.005),
 
-		Buffer:   p.integer("TICKGUARD_BUFFER", 4096),
-		BarGrace: p.duration("TICKGUARD_BAR_GRACE", 2*time.Second),
+		Buffer:   p.integer("TEKEL_BUFFER", 4096),
+		BarGrace: p.duration("TEKEL_BAR_GRACE", 2*time.Second),
 	}
-	p.check(c.HTTPAddr != "", "TICKGUARD_HTTP_ADDR must not be empty")
-	p.check(c.DataDir != "", "TICKGUARD_DATA_DIR must not be empty")
-	p.check(c.DBPath != "", "TICKGUARD_DB_PATH must not be empty")
+	p.check(c.HTTPAddr != "", "TEKEL_HTTP_ADDR must not be empty")
+	p.check(c.DataDir != "", "TEKEL_DATA_DIR must not be empty")
+	p.check(c.DBPath != "", "TEKEL_DB_PATH must not be empty")
 	p.check(slices.ContainsFunc(c.Feeds(), Feed.On),
-		"at least one of TICKGUARD_BINANCE_SYMBOLS, TICKGUARD_KRAKEN_SYMBOLS and TICKGUARD_MERCADOBITCOIN_SYMBOLS must list a symbol, or TICKGUARD_KLEVER_NETWORK must be set")
-	p.check(len(c.Klever.Symbols) <= 1, "TICKGUARD_KLEVER_NETWORK must name one network")
-	p.check(c.ShutdownTimeout > 0, "TICKGUARD_SHUTDOWN_TIMEOUT must be positive")
-	p.check(c.Buffer > 0, "TICKGUARD_BUFFER must be positive")
+		"at least one of TEKEL_BINANCE_SYMBOLS, TEKEL_KRAKEN_SYMBOLS and TEKEL_MERCADOBITCOIN_SYMBOLS must list a symbol, or TEKEL_KLEVER_NETWORK must be set")
+	p.check(len(c.Klever.Symbols) <= 1, "TEKEL_KLEVER_NETWORK must name one network")
+	p.check(c.ShutdownTimeout > 0, "TEKEL_SHUTDOWN_TIMEOUT must be positive")
+	p.check(c.Buffer > 0, "TEKEL_BUFFER must be positive")
 	switch c.LogLevel {
 	case "debug", "info", "warn", "error":
 	default:
-		p.fail("TICKGUARD_LOG_LEVEL must be debug, info, warn or error, got %q", c.LogLevel)
+		p.fail("TEKEL_LOG_LEVEL must be debug, info, warn or error, got %q", c.LogLevel)
 	}
 	if err := errors.Join(p.errs...); err != nil {
 		return Config{}, fmt.Errorf("invalid configuration:\n%w", err)

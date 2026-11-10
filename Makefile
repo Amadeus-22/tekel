@@ -1,11 +1,11 @@
-APP     := tickguard
+APP     := tekel
 BIN     := bin/$(APP)
 IMAGE   ?= $(APP):dev
 GOFLAGS ?=
 
 .PHONY: build test test-integration lint check run docker clean
 
-build: ## build bin/tickguard
+build: ## build bin/tekel
 	CGO_ENABLED=0 go build $(GOFLAGS) -trimpath -o $(BIN) ./cmd/$(APP)
 
 test: ## unit and adapter tests with the race detector

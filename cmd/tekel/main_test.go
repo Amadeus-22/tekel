@@ -7,21 +7,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Amadeus-22/tickguard/internal/adapter/binance"
-	"github.com/Amadeus-22/tickguard/internal/adapter/kraken"
-	"github.com/Amadeus-22/tickguard/internal/adapter/mercadobitcoin"
-	"github.com/Amadeus-22/tickguard/internal/app"
-	"github.com/Amadeus-22/tickguard/internal/domain"
-	"github.com/Amadeus-22/tickguard/internal/platform/config"
-	"github.com/Amadeus-22/tickguard/internal/platform/metrics"
+	"github.com/Amadeus-22/tekel/internal/adapter/binance"
+	"github.com/Amadeus-22/tekel/internal/adapter/kraken"
+	"github.com/Amadeus-22/tekel/internal/adapter/mercadobitcoin"
+	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/platform/config"
+	"github.com/Amadeus-22/tekel/internal/platform/metrics"
 )
 
 func TestPipelineConfigMapsEveryField(t *testing.T) {
 	cfg, err := config.Load(func(k string) (string, bool) {
 		v, ok := map[string]string{
-			"TICKGUARD_SPIKE_WINDOW":          "11",
-			"TICKGUARD_STALE_AFTER_OVERRIDES": "kraken:ETH/USD=5m",
-			"TICKGUARD_BUFFER":                "8",
+			"TEKEL_SPIKE_WINDOW":          "11",
+			"TEKEL_STALE_AFTER_OVERRIDES": "kraken:ETH/USD=5m",
+			"TEKEL_BUFFER":                "8",
 		}[k]
 		return v, ok
 	})
@@ -42,7 +42,7 @@ func TestPipelineConfigMapsEveryField(t *testing.T) {
 
 func TestBuildFeedsHonoursDisabledExchange(t *testing.T) {
 	cfg, err := config.Load(func(k string) (string, bool) {
-		if k == "TICKGUARD_KRAKEN_SYMBOLS" {
+		if k == "TEKEL_KRAKEN_SYMBOLS" {
 			return "", true
 		}
 		return "", false
@@ -89,8 +89,8 @@ func TestBuildFeedsHonoursDisabledExchange(t *testing.T) {
 func TestBuildFeedsOrder(t *testing.T) {
 	cfg, err := config.Load(func(k string) (string, bool) {
 		v, ok := map[string]string{
-			"TICKGUARD_MERCADOBITCOIN_SYMBOLS": "BTC-BRL",
-			"TICKGUARD_KLEVER_NETWORK":         "testnet",
+			"TEKEL_MERCADOBITCOIN_SYMBOLS": "BTC-BRL",
+			"TEKEL_KLEVER_NETWORK":         "testnet",
 		}[k]
 		return v, ok
 	})
