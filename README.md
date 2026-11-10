@@ -1,6 +1,6 @@
-<p align="center"><img src="docs/assets/logo.svg" alt="tickguard logo" width="120"></p>
+<p align="center"><img src="docs/assets/logo.svg" alt="Tekel logo" width="120"></p>
 
-# tickguard
+# Tekel
 
 Validates crypto trade feeds while they arrive and writes the clean result as
 QuantConnect LEAN minute bars, with every data-quality incident on record.
@@ -22,7 +22,7 @@ The question that matters is not only *is data missing?* but *why?*:
 - a **silent gap** — the trade sequence jumped while the connection was up — is
   a data-quality defect in the feed itself.
 
-tickguard makes that distinction live, per trade, and keeps the evidence.
+Tekel makes that distinction live, per trade, and keeps the evidence.
 
 ## What it does
 
@@ -54,7 +54,7 @@ tickguard makes that distinction live, per trade, and keeps the evidence.
 - Serves the live state of every stream and the incident log over HTTP, and
   exposes Prometheus metrics.
 - Audits LEAN data you already have — downloaded, bought or converted — with
-  `tickguard audit <path>`: no exchange connection, JSON output and an exit code
+  `tekel audit <path>`: no exchange connection, JSON output and an exit code
   for CI ([below](#audit-existing-lean-data)).
 
 Flagged trades are kept in the bars — a price spike can be a real fat-finger
@@ -96,10 +96,10 @@ No Go and no clone needed. With Docker:
 
 ```sh
 docker run --rm -p 8080:8080 \
-  -e TICKGUARD_BINANCE_SYMBOLS=BTCUSDT,ETHUSDT \
-  -e TICKGUARD_KRAKEN_SYMBOLS=BTC/USD \
-  -v tickguard-data:/var/lib/tickguard \
-  ghcr.io/amadeus-22/tickguard:0.1.0
+  -e TEKEL_BINANCE_SYMBOLS=BTCUSDT,ETHUSDT \
+  -e TEKEL_KRAKEN_SYMBOLS=BTC/USD \
+  -v tekel-data:/var/lib/tekel \
+  ghcr.io/amadeus-22/tekel:0.1.0
 ```
 
 Then, in another terminal:
@@ -110,8 +110,8 @@ curl -s localhost:8080/v1/incidents | jq    # every data-quality incident so far
 ```
 
 Or download a binary for Linux or macOS (amd64 and arm64) from
-[Releases](https://github.com/Amadeus-22/tickguard/releases), check it against
-`checksums.txt` and run `./tickguard` with the same environment variables.
+[Releases](https://github.com/Amadeus-22/tekel/releases), check it against
+`checksums.txt` and run `./tekel` with the same environment variables.
 All settings are listed in [.env.example](.env.example). No exchange account or
 API key is needed: every feed is public.
 
@@ -121,7 +121,7 @@ Requires Go 1.24+ (the toolchain is fetched automatically) or Docker.
 
 ```sh
 cp .env.example .env
-make run                      # builds bin/tickguard and runs it with .env
+make run                      # builds bin/tekel and runs it with .env
 ```
 
 ```sh
@@ -148,7 +148,7 @@ documentation.
 
 ### Mercado Bitcoin (Brazil)
 
-Set `TICKGUARD_MERCADOBITCOIN_SYMBOLS=BTC-BRL,USDT-BRL` (Mercado Bitcoin's
+Set `TEKEL_MERCADOBITCOIN_SYMBOLS=BTC-BRL,USDT-BRL` (Mercado Bitcoin's
 `BASE-QUOTE` spelling). Bars go to
 `crypto/mercadobitcoin/minute/btcbrl/<yyyymmdd>_trade.zip`.
 
@@ -159,17 +159,17 @@ To backtest on this data you must register a custom market yourself:
 symbol, a `"Crypto-mercadobitcoin-[*]"` entry (24/7, UTC) in
 `Data/market-hours/market-hours-database.json`, and one
 `mercadobitcoin,<ticker>,crypto,...` row per pair in
-`Data/symbol-properties/symbol-properties-database.csv`. tickguard does not
+`Data/symbol-properties/symbol-properties-database.csv`. Tekel does not
 ship these; see [ADR 0006](docs/adr/0006-mercado-bitcoin-adapter.md).
 
 BRL markets can be quiet for minutes, so give them per-stream stale thresholds,
-e.g. `TICKGUARD_STALE_AFTER_OVERRIDES=mercadobitcoin:ETH-BRL=10m`. Mercado
-Bitcoin stamps trades in whole seconds, so its `tickguard_feed_lag_seconds`
+e.g. `TEKEL_STALE_AFTER_OVERRIDES=mercadobitcoin:ETH-BRL=10m`. Mercado
+Bitcoin stamps trades in whole seconds, so its `tekel_feed_lag_seconds`
 reads up to one second high.
 
 ### KleverChain blocks
 
-Set `TICKGUARD_KLEVER_NETWORK=testnet` to follow every block of the Klever
+Set `TEKEL_KLEVER_NETWORK=testnet` to follow every block of the Klever
 testnet through the public node's WebSocket (`/subscribe`, `blocks`). The
 stream shows up as `klever:testnet` with `"kind": "blocks"`: `trades` counts
 blocks and `last_trade_id` is the last block nonce. A nonce jump while
@@ -178,23 +178,23 @@ full), a dropped connection a `disconnect`, no block for too long a
 `stale_stream`. Blocks have no price: no `price_spike`, no LEAN files.
 
 A block comes every 4 s, so a tighter stale threshold suits it:
-`TICKGUARD_STALE_AFTER_OVERRIDES=klever:testnet=20s`.
+`TEKEL_STALE_AFTER_OVERRIDES=klever:testnet=20s`.
 
-For mainnet set `TICKGUARD_KLEVER_NETWORK=mainnet` **and**
-`TICKGUARD_KLEVER_URL` to a node that serves `/subscribe`: the public
+For mainnet set `TEKEL_KLEVER_NETWORK=mainnet` **and**
+`TEKEL_KLEVER_URL` to a node that serves `/subscribe`: the public
 `node.mainnet.klever.org` does not (404). A node that serves another chain than
-the configured network stops tickguard with an error. Design and sources:
+the configured network stops Tekel with an error. Design and sources:
 [ADR 0007](docs/adr/0007-klever-block-feed.md).
 
 ## Audit existing LEAN data
 
-`tickguard audit` checks LEAN trade data already on disk, whoever wrote it. It
+`tekel audit` checks LEAN trade data already on disk, whoever wrote it. It
 walks a LEAN data folder (or any sub-folder, or a single zip), recognises each
 file from LEAN's path layout, streams the rows and reports what is wrong, with
 `file:line`.
 
 ```sh
-tickguard audit <path> [--format table|json] [--fail-on warn|error]
+tekel audit <path> [--format table|json] [--fail-on warn|error]
 ```
 
 - Audited: crypto trade files at tick, second, minute, hour and daily
@@ -218,7 +218,7 @@ Real output on the sample data shipped in LEAN's repository (`Data/`, commit
 `a1470d35`), trimmed:
 
 ```text
-$ tickguard audit Lean/Data/crypto
+$ tekel audit Lean/Data/crypto
 SERIES                         TZ   FILES  ROWS   FIRST                LAST                 ERROR  WARN  INFO
 crypto/binance/hour/btcusdt    UTC  1      120    2018-05-01T00:00:00  2018-05-05T23:00:00  0      0     0
 crypto/binance/minute/btcbusd  UTC  1      1440   2022-12-13T00:00:00  2022-12-13T23:59:00  0      0     0
@@ -237,7 +237,7 @@ SKIPPED 17 file(s): 17 × quote data (only trade data is audited)
 
 TOTAL files=27 rows=41873 error=0 warn=23 info=620
 
-$ tickguard audit Lean/Data/equity/usa/minute
+$ tekel audit Lean/Data/equity/usa/minute
 ...
 ISSUES (error and warn: 2, showing 2)
 aapl/20140609_trade.zip:1   warn  price_spike  price 645.57 deviates 553.07 from the median 92.5 of 50 neighbouring rows (allowed 1.85, MAD 0.06)
@@ -257,29 +257,29 @@ once. Durations use Go syntax (`500ms`, `30s`, `5m`).
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `TICKGUARD_HTTP_ADDR` | `127.0.0.1:8080` | HTTP listen address (the Docker image sets `:8080`) |
-| `TICKGUARD_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
-| `TICKGUARD_DATA_DIR` | `./data` | LEAN data folder; bars go under `crypto/` |
-| `TICKGUARD_DB_PATH` | `./tickguard.db` | SQLite incident database |
-| `TICKGUARD_BINANCE_SYMBOLS` | `BTCUSDT,ETHUSDT` | Binance symbols; set empty to disable Binance |
-| `TICKGUARD_BINANCE_URL` | `wss://stream.binance.com:9443` | Binance stream base URL |
-| `TICKGUARD_KRAKEN_SYMBOLS` | `BTC/USD,ETH/USD` | Kraken v2 symbols; set empty to disable Kraken |
-| `TICKGUARD_KRAKEN_URL` | `wss://ws.kraken.com/v2` | Kraken WebSocket v2 URL |
-| `TICKGUARD_MERCADOBITCOIN_SYMBOLS` | — (disabled) | Mercado Bitcoin markets, e.g. `BTC-BRL,USDT-BRL`; LEAN needs a custom market (see above) |
-| `TICKGUARD_MERCADOBITCOIN_URL` | `wss://ws.mercadobitcoin.net/ws` | Mercado Bitcoin WebSocket URL |
-| `TICKGUARD_KLEVER_NETWORK` | — (disabled) | `mainnet` or `testnet`: follow KleverChain blocks (see above) |
-| `TICKGUARD_KLEVER_URL` | public testnet node | Klever node `/subscribe` WebSocket URL; required for `mainnet` |
-| `TICKGUARD_CLOCK_SKEW` | `2s` | `clock_skew` threshold |
-| `TICKGUARD_OUT_OF_ORDER_TOLERANCE` | `0s` | how far exchange time may go backwards |
-| `TICKGUARD_STALE_AFTER` | `60s` | `stale_stream` threshold |
-| `TICKGUARD_STALE_AFTER_OVERRIDES` | — | per-stream thresholds, e.g. `kraken:ETH/USD=3m,binance:SOLUSDT=2m`; an override for a stream no enabled feed carries stops startup |
-| `TICKGUARD_DUPLICATE_WINDOW` | `10000` | recent trade IDs remembered per stream |
-| `TICKGUARD_SPIKE_WINDOW` | `101` | prices in the rolling median |
-| `TICKGUARD_SPIKE_K` | `10` | allowed deviation in scaled MADs |
-| `TICKGUARD_SPIKE_MIN_DEVIATION` | `0.005` | relative floor on the allowed deviation (0.5%) |
-| `TICKGUARD_BUFFER` | `4096` | events buffered between feeds and validator |
-| `TICKGUARD_BAR_GRACE` | `2s` | wait after a minute ends before its bar is written |
-| `TICKGUARD_SHUTDOWN_TIMEOUT` | `10s` | HTTP drain time on SIGINT/SIGTERM |
+| `TEKEL_HTTP_ADDR` | `127.0.0.1:8080` | HTTP listen address (the Docker image sets `:8080`) |
+| `TEKEL_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+| `TEKEL_DATA_DIR` | `./data` | LEAN data folder; bars go under `crypto/` |
+| `TEKEL_DB_PATH` | `./tekel.db` | SQLite incident database |
+| `TEKEL_BINANCE_SYMBOLS` | `BTCUSDT,ETHUSDT` | Binance symbols; set empty to disable Binance |
+| `TEKEL_BINANCE_URL` | `wss://stream.binance.com:9443` | Binance stream base URL |
+| `TEKEL_KRAKEN_SYMBOLS` | `BTC/USD,ETH/USD` | Kraken v2 symbols; set empty to disable Kraken |
+| `TEKEL_KRAKEN_URL` | `wss://ws.kraken.com/v2` | Kraken WebSocket v2 URL |
+| `TEKEL_MERCADOBITCOIN_SYMBOLS` | — (disabled) | Mercado Bitcoin markets, e.g. `BTC-BRL,USDT-BRL`; LEAN needs a custom market (see above) |
+| `TEKEL_MERCADOBITCOIN_URL` | `wss://ws.mercadobitcoin.net/ws` | Mercado Bitcoin WebSocket URL |
+| `TEKEL_KLEVER_NETWORK` | — (disabled) | `mainnet` or `testnet`: follow KleverChain blocks (see above) |
+| `TEKEL_KLEVER_URL` | public testnet node | Klever node `/subscribe` WebSocket URL; required for `mainnet` |
+| `TEKEL_CLOCK_SKEW` | `2s` | `clock_skew` threshold |
+| `TEKEL_OUT_OF_ORDER_TOLERANCE` | `0s` | how far exchange time may go backwards |
+| `TEKEL_STALE_AFTER` | `60s` | `stale_stream` threshold |
+| `TEKEL_STALE_AFTER_OVERRIDES` | — | per-stream thresholds, e.g. `kraken:ETH/USD=3m,binance:SOLUSDT=2m`; an override for a stream no enabled feed carries stops startup |
+| `TEKEL_DUPLICATE_WINDOW` | `10000` | recent trade IDs remembered per stream |
+| `TEKEL_SPIKE_WINDOW` | `101` | prices in the rolling median |
+| `TEKEL_SPIKE_K` | `10` | allowed deviation in scaled MADs |
+| `TEKEL_SPIKE_MIN_DEVIATION` | `0.005` | relative floor on the allowed deviation (0.5%) |
+| `TEKEL_BUFFER` | `4096` | events buffered between feeds and validator |
+| `TEKEL_BAR_GRACE` | `2s` | wait after a minute ends before its bar is written |
+| `TEKEL_SHUTDOWN_TIMEOUT` | `10s` | HTTP drain time on SIGINT/SIGTERM |
 
 ## API
 
@@ -304,14 +304,14 @@ JSON in and out. Errors are `{"error":{"code":"snake_case","message":"..."}}`.
 
 | Metric | Type | Labels |
 |---|---|---|
-| `tickguard_trades_total` | counter (blocks for `klever`) | `exchange` (`binance`, `kraken`, `mercadobitcoin`, `klever`), `symbol` |
-| `tickguard_incidents_total` | counter | `exchange`, `symbol`, `kind` |
-| `tickguard_feed_lag_seconds` | histogram of received − exchange time | `exchange`, `symbol` |
-| `tickguard_connected` | gauge, 1 while subscribed | `exchange` |
-| `tickguard_decode_errors_total` | counter of skipped malformed messages | `exchange` |
-| `tickguard_backpressure_seconds_total` | counter of time feeds were blocked | `exchange` |
-| `tickguard_late_trades_total` | counter of trades too late for their bar | `exchange`, `symbol` |
-| `tickguard_sink_errors_total` | counter of failed writes | `sink` (`incidents`, `bars`) |
+| `tekel_trades_total` | counter (blocks for `klever`) | `exchange` (`binance`, `kraken`, `mercadobitcoin`, `klever`), `symbol` |
+| `tekel_incidents_total` | counter | `exchange`, `symbol`, `kind` |
+| `tekel_feed_lag_seconds` | histogram of received − exchange time | `exchange`, `symbol` |
+| `tekel_connected` | gauge, 1 while subscribed | `exchange` |
+| `tekel_decode_errors_total` | counter of skipped malformed messages | `exchange` |
+| `tekel_backpressure_seconds_total` | counter of time feeds were blocked | `exchange` |
+| `tekel_late_trades_total` | counter of trades too late for their bar | `exchange`, `symbol` |
+| `tekel_sink_errors_total` | counter of failed writes | `sink` (`incidents`, `bars`) |
 
 Go runtime and process metrics are included.
 
@@ -322,10 +322,11 @@ Go runtime and process metrics are included.
 - [0002 — Distinguish known gaps from silent gaps](docs/adr/0002-known-vs-silent-gaps.md)
 - [0003 — Backpressure instead of dropping trades](docs/adr/0003-backpressure-instead-of-dropping.md)
 - [0004 — SQLite for incidents](docs/adr/0004-sqlite-for-incidents.md)
-- [0005 — `tickguard audit`: quality checks over existing LEAN data](docs/adr/0005-audit-lean-data.md),
+- [0005 — `tekel audit`: quality checks over existing LEAN data](docs/adr/0005-audit-lean-data.md),
   with the LEAN sources for every layout.
 - [0006 — Mercado Bitcoin adapter over its public WebSocket](docs/adr/0006-mercado-bitcoin-adapter.md)
 - [0007 — KleverChain block feed: block streams next to trade streams](docs/adr/0007-klever-block-feed.md)
+- [0008 — Rename to Tekel](docs/adr/0008-rename-to-tekel.md)
 
 Exchange message formats are cited next to the decoders:
 [Binance WebSocket Streams](https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md),
@@ -340,6 +341,14 @@ Exchange message formats are cited next to the decoders:
 - **Phase 3** — REST backfill of silent gaps using the recorded windows
   (Mercado Bitcoin allows one `GET /{symbol}/trades` request per second).
 - **Phase 4** — web UI.
+
+## Upgrading from tickguard
+
+Tekel was called tickguard up to v0.1.0 ([ADR 0008](docs/adr/0008-rename-to-tekel.md)).
+
+| Was | Is now |
+|---|---|
+| `TICKGUARD_*` env vars, `tickguard_*` metrics, `./tickguard.db`, `ghcr.io/amadeus-22/tickguard` | `TEKEL_*`, `tekel_*`, `./tekel.db`, `ghcr.io/amadeus-22/tekel` |
 
 ## License
 

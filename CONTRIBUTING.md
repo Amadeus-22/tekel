@@ -18,7 +18,7 @@ Go 1.24 or newer. No exchange account or API key is needed: every feed is public
 `internal/domain` holds the rules, `internal/app` the use cases and their ports,
 `internal/adapter/<name>` one implementation each (exchanges, SQLite, HTTP, LEAN
 files). A new exchange is a new package next to `internal/adapter/kraken`, wired in
-`cmd/tickguard/main.go`. The full layout and conventions are in
+`cmd/tekel/main.go`. The full layout and conventions are in
 [ENGINEERING.md](ENGINEERING.md).
 
 ## Pull requests

@@ -1,6 +1,6 @@
 # Engineering Standards
 
-Shared by `tickguard`, `rpcgate`, `chainwatch` and `costbasis-br`. Each repository
+Shared by `tekel`, `rpcgate`, `chainwatch` and `costbasis-br`. Each repository
 carries a copy; this file is the source of truth.
 
 ## Principles

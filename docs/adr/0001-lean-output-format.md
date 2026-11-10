@@ -2,6 +2,10 @@
 
 Status: accepted · 2026-09-29
 
+> Written when the project was named tickguard. [ADR 0008](0008-rename-to-tekel.md)
+> renamed it to Tekel: `TICKGUARD_*` variables are now `TEKEL_*`, `tickguard_*`
+> metrics `tekel_*`.
+
 ## Context
 
 tickguard's clean output must be usable without a conversion step. The target
