@@ -209,7 +209,7 @@
       "id": 4,
       "type": "timeseries",
       "title": "Incidents per 5 minutes, by stream and kind",
-      "description": "New data-quality incidents (tekel_incidents_total). Details: GET /v1/incidents.",
+      "description": "New data-quality incidents in each 5-minute window, including the first incident of a stream (tekel_incidents_total). Details: GET /v1/incidents.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -227,7 +227,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (exchange, symbol, kind) (increase(tekel_incidents_total[5m]))",
+          "expr": "clamp_min(sum by (exchange, symbol, kind) (tekel_incidents_total) - sum by (exchange, symbol, kind) (tekel_incidents_total offset 5m), 0) or sum by (exchange, symbol, kind) (tekel_incidents_total unless tekel_incidents_total offset 5m)",
           "legendFormat": "{{exchange}} {{symbol}} {{kind}}"
         }
       ],
@@ -299,7 +299,8 @@
             "mode": "fixed",
             "fixedColor": "orange"
           },
-          "min": 0
+          "min": 0,
+          "displayName": "${__field.labels.exchange} ${__field.labels.symbol} \u00b7 ${__field.labels.kind}"
         },
         "overrides": []
       },
@@ -348,7 +349,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (exchange) (rate(tekel_backpressure_seconds_total[1m])) or vector(0)",
+          "expr": "sum by (exchange) (rate(tekel_backpressure_seconds_total[1m])) or label_replace(vector(0), \"exchange\", \"all\", \"\", \"\")",
           "legendFormat": "{{exchange}}"
         }
       ],
@@ -401,7 +402,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (sink) (increase(tekel_sink_errors_total[5m])) or vector(0)",
+          "expr": "sum by (sink) (increase(tekel_sink_errors_total[5m])) or label_replace(vector(0), \"sink\", \"all\", \"\", \"\")",
           "legendFormat": "{{sink}}"
         }
       ],
@@ -455,7 +456,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (exchange) (increase(tekel_decode_errors_total[5m])) or vector(0)",
+          "expr": "sum by (exchange) (increase(tekel_decode_errors_total[5m])) or label_replace(vector(0), \"exchange\", \"all\", \"\", \"\")",
           "legendFormat": "decode {{exchange}}"
         },
         {
@@ -464,7 +465,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (exchange) (increase(tekel_late_trades_total[5m])) or vector(0)",
+          "expr": "sum by (exchange) (increase(tekel_late_trades_total[5m])) or label_replace(vector(0), \"exchange\", \"all\", \"\", \"\")",
           "legendFormat": "late {{exchange}}"
         }
       ],
