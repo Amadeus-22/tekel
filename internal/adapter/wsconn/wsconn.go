@@ -144,6 +144,11 @@ func session(ctx context.Context, cfg Config, h Handlers) (healthy bool, err err
 		resp.Body.Close()
 	}
 	if err != nil {
+		// A refused upgrade only says "bad handshake"; the status tells a block
+		// (403), a moved endpoint (404) or an outage (5xx) apart.
+		if resp != nil {
+			return false, fmt.Errorf("dial %s: %w (HTTP %d)", cfg.URL, err, resp.StatusCode)
+		}
 		return false, fmt.Errorf("dial %s: %w", cfg.URL, err)
 	}
 	defer conn.Close()

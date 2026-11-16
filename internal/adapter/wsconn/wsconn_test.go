@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
@@ -314,6 +315,40 @@ func TestRunRetriesDialFailures(t *testing.T) {
 	if rec.ups != 0 {
 		t.Error("Up called without a connection")
 	}
+}
+
+func TestRunLogsTheStatusOfARefusedHandshake(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+	}))
+	defer srv.Close()
+
+	var mu sync.Mutex
+	var buf strings.Builder
+	cfg := testConfig("ws" + strings.TrimPrefix(srv.URL, "http") + "/")
+	cfg.Logger = slog.New(slog.NewTextHandler(lockedWriter{&mu, &buf}, nil))
+
+	cancel, done := run(t, cfg, newRecorder().handlers())
+	time.Sleep(30 * time.Millisecond)
+	cancel()
+	<-done
+
+	mu.Lock()
+	defer mu.Unlock()
+	if !strings.Contains(buf.String(), "bad handshake (HTTP 403)") {
+		t.Errorf("log does not carry the handshake status:\n%s", buf.String())
+	}
+}
+
+type lockedWriter struct {
+	mu *sync.Mutex
+	w  *strings.Builder
+}
+
+func (l lockedWriter) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.w.Write(p)
 }
 
 func TestRunStopsOnPermanentError(t *testing.T) {
