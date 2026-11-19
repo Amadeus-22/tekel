@@ -74,9 +74,9 @@ func TestBuildFeedsHonoursDisabledExchange(t *testing.T) {
 	if err != nil || len(feeds) != 2 || feeds[1].Exchange() != "klever" || feeds[1].Kind() != domain.StreamBlocks {
 		t.Errorf("feeds with Klever = %v, %v", feeds, err)
 	}
-	cfg.Klever.Symbols = []string{"mainnet"} // no public mainnet node serves /subscribe: a URL is required
-	if _, err := buildFeeds(cfg, slog.Default(), metrics.New()); err == nil {
-		t.Error("Klever mainnet without a URL accepted")
+	cfg.Klever.Symbols = []string{"mainnet"} // no URL: the public mainnet node
+	if feeds, err = buildFeeds(cfg, slog.Default(), metrics.New()); err != nil || len(feeds) != 2 || feeds[1].Symbols()[0] != "mainnet" {
+		t.Errorf("feeds with Klever mainnet = %v, %v", feeds, err)
 	}
 	cfg.Klever.Symbols = nil
 
@@ -129,7 +129,7 @@ func TestConfigDefaultsMatchPackageDefaults(t *testing.T) {
 		{"binance", cfg.Binance.URL, binance.DefaultBaseURL},
 		{"kraken", cfg.Kraken.URL, kraken.DefaultURL},
 		{"mercadobitcoin", cfg.MercadoBitcoin.URL, mercadobitcoin.DefaultURL},
-		{"klever", cfg.Klever.URL, ""}, // empty: klever.New picks klever.TestnetURL
+		{"klever", cfg.Klever.URL, ""}, // empty: klever.New picks the network's klever.PublicURLs entry
 	} {
 		if tt.got != tt.want {
 			t.Errorf("%s default URL = %q, want %q", tt.name, tt.got, tt.want)

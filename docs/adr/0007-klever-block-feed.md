@@ -6,6 +6,10 @@ Status: accepted · 2026-11-10
 > renamed it to Tekel: `TICKGUARD_*` variables are now `TEKEL_*`, `tickguard_*`
 > metrics `tekel_*`.
 
+> Update 2026-11-19: Klever enabled `/subscribe` on the public mainnet node,
+> so `TEKEL_KLEVER_URL` is now optional for mainnet too (`klever.PublicURLs`).
+> The 404 notes below record what was true on 2026-11-10.
+
 ## Context
 
 KleverChain blocks carry a sequential nonce (height), so the question tickguard
