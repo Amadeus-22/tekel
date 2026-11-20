@@ -18,9 +18,22 @@ Go 1.24 or newer. No exchange account or API key is needed: every feed is public
 
 `internal/domain` holds the rules, `internal/app` the use cases and their ports,
 `internal/adapter/<name>` one implementation each (exchanges, SQLite, HTTP, LEAN
-files). A new exchange is a new package next to `internal/adapter/kraken` (its
-tests use `internal/adapter/feedtest` and `wsconn/wstest`), one `config.Feed` in
-`internal/platform/config` and one row in the feed table of `cmd/tekel/main.go`. The full layout and conventions are in
+files).
+
+### Adding an exchange or a chain
+
+1. A new package next to `internal/adapter/kraken`: `Decode` for one message, and
+   `Run` calling `wsfeed.Run` with your subscribe message and a `Handle` (the
+   connection, reconnects and malformed messages are already handled).
+2. Tests with recorded messages, using `internal/adapter/feedtest` and
+   `wsconn/wstest`. Never connect to the real exchange in tests.
+3. One row in `cmd/tekel/sources.go`: its environment variables and how to build it.
+4. Document the variables in the README table and `.env.example`.
+
+Nothing else changes: configuration, the pipeline, metrics, storage and the HTTP
+API pick the new source up from that row.
+
+The full layout and conventions are in
 [ENGINEERING.md](ENGINEERING.md).
 
 ## Pull requests

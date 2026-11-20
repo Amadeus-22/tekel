@@ -77,7 +77,7 @@ flowchart LR
 
 | Package | Responsibility |
 |---|---|
-| `cmd/tekel` | wiring, signal handling, maps `platform/config` onto the packages below; `audit` subcommand (`audit.go`) |
+| `cmd/tekel` | wiring, signal handling, maps `platform/config` onto the packages below; `sources.go` is the one table of exchanges and chains (environment variables + how to build each adapter); `audit` subcommand (`audit.go`) |
 | `internal/domain` | `Trade`, `Block` (chain block), `StreamKind`, `Incident`, `Bar`, exact `Decimal`, sentinel errors |
 | `internal/domain/quality` | validators and per-stream state (`Stream`; `NewBlockStream` runs the same rules over block nonces, without the price check), `SpikeRule`/`SpikeWindow` shared with audit; pure |
 | `internal/domain/audit` | LEAN path recognition, row parsers and audit checks (`Checker`, `CheckDays`); pure |
@@ -95,7 +95,7 @@ flowchart LR
 | `internal/adapter/leanfs` | `BarSink` writing LEAN zips atomically (temp file + rename), continues a day after restart; `Source` (read-only `LeanSource` over a folder or one zip) |
 | `internal/adapter/auditreport` | renders an `AuditReport` as a table or JSON; golden fixtures trimmed from LEAN samples in `testdata/` |
 | `internal/adapter/httpapi` | `/v1/streams`, `/v1/incidents`, `/healthz`, `/readyz`, `/metrics` |
-| `internal/platform/config` | environment variables → validated `Config` (one `Feed` per source, `Feeds()` in a fixed order; stale overrides keyed by `domain.StreamKey`) |
+| `internal/platform/config` | environment variables → validated `Config`; knows no exchange by name: `Load` takes the declared `Source`s and returns one `Feed` per source in that order; stale overrides keyed by `domain.StreamKey` |
 | `internal/platform/logging` | `slog` JSON logger |
 | `internal/platform/metrics` | Prometheus registry; implements `app.Metrics` |
 

@@ -15,16 +15,21 @@ func env(m map[string]string) Lookup {
 	}
 }
 
+// sources mirrors the shape of cmd/tekel's table: one source on by default,
+// one off by default, one single-valued.
+var sources = []Source{
+	{Name: "alpha", URLKey: "TEKEL_ALPHA_URL", URLDefault: "wss://alpha", SymbolsKey: "TEKEL_ALPHA_SYMBOLS", SymbolsDefault: "A1,A2"},
+	{Name: "beta", URLKey: "TEKEL_BETA_URL", URLDefault: "wss://beta", SymbolsKey: "TEKEL_BETA_SYMBOLS"},
+	{Name: "chain", URLKey: "TEKEL_CHAIN_URL", SymbolsKey: "TEKEL_CHAIN_NETWORK", Single: true},
+}
+
 func TestDefaults(t *testing.T) {
-	c, err := Load(env(nil))
+	c, err := Load(env(nil), sources)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if c.HTTPAddr != "127.0.0.1:8080" || c.LogLevel != "info" || c.DataDir != "./data" || c.DBPath != "./tekel.db" {
 		t.Errorf("basic defaults = %+v", c)
-	}
-	if strings.Join(c.Binance.Symbols, ",") != "BTCUSDT,ETHUSDT" || strings.Join(c.Kraken.Symbols, ",") != "BTC/USD,ETH/USD" {
-		t.Errorf("symbols = %v %v", c.Binance.Symbols, c.Kraken.Symbols)
 	}
 	if c.ClockSkew != 2*time.Second || c.StaleAfter != time.Minute || c.SpikeK != 10 || c.Buffer != 4096 {
 		t.Errorf("thresholds = %+v", c)
@@ -38,22 +43,17 @@ func TestOverridesFromEnv(t *testing.T) {
 	c, err := Load(env(map[string]string{
 		"TEKEL_HTTP_ADDR":             "127.0.0.1:9000",
 		"TEKEL_LOG_LEVEL":             "debug",
-		"TEKEL_BINANCE_SYMBOLS":       " BTCUSDT , ,SOLUSDT",
-		"TEKEL_KRAKEN_SYMBOLS":        "", // disables Kraken
 		"TEKEL_CLOCK_SKEW":            "500ms",
 		"TEKEL_DUPLICATE_WINDOW":      "50",
 		"TEKEL_SPIKE_MIN_DEVIATION":   "0.01",
 		"TEKEL_STALE_AFTER_OVERRIDES": "binance:SOLUSDT=5m, kraken:ETH/USD=90s",
-	}))
+	}), sources)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if c.HTTPAddr != "127.0.0.1:9000" || c.LogLevel != "debug" || c.ClockSkew != 500*time.Millisecond ||
 		c.DuplicateWindow != 50 || c.SpikeMinDeviation != 0.01 {
 		t.Errorf("config = %+v", c)
-	}
-	if strings.Join(c.Binance.Symbols, ",") != "BTCUSDT,SOLUSDT" || len(c.Kraken.Symbols) != 0 {
-		t.Errorf("symbols = %q %q", c.Binance.Symbols, c.Kraken.Symbols)
 	}
 	sol := domain.StreamKey{Exchange: "binance", Symbol: "SOLUSDT"}
 	eth := domain.StreamKey{Exchange: "kraken", Symbol: "ETH/USD"}
@@ -75,9 +75,8 @@ func TestReportsEveryError(t *testing.T) {
 		"TEKEL_BUFFER":                "0",
 		"TEKEL_SHUTDOWN_TIMEOUT":      "0s",
 		"TEKEL_STALE_AFTER_OVERRIDES": "BTCUSDT=5m,binance:ETHUSDT=soon,kraken:=1s",
-		"TEKEL_BINANCE_SYMBOLS":       "",
-		"TEKEL_KRAKEN_SYMBOLS":        " , ",
-	}))
+		"TEKEL_ALPHA_SYMBOLS":         " , ",
+	}), sources)
 	if err == nil {
 		t.Fatal("Load() = nil error")
 	}
@@ -95,72 +94,49 @@ func TestReportsEveryError(t *testing.T) {
 
 func TestFromEnv(t *testing.T) {
 	t.Setenv("TEKEL_HTTP_ADDR", ":9999")
-	c, err := FromEnv()
+	c, err := FromEnv(sources)
 	if err != nil || c.HTTPAddr != ":9999" {
 		t.Errorf("FromEnv() = %+v, %v", c.HTTPAddr, err)
 	}
 }
 
-func TestMercadoBitcoin(t *testing.T) {
-	c, err := Load(env(nil))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(c.MercadoBitcoin.Symbols) != 0 || c.MercadoBitcoin.URL != "wss://ws.mercadobitcoin.net/ws" {
-		t.Errorf("default = %v %q, want disabled", c.MercadoBitcoin.Symbols, c.MercadoBitcoin.URL)
-	}
-	// Mercado Bitcoin alone is a valid configuration.
-	c, err = Load(env(map[string]string{
-		"TEKEL_BINANCE_SYMBOLS": "", "TEKEL_KRAKEN_SYMBOLS": "",
-		"TEKEL_MERCADOBITCOIN_SYMBOLS": "BTC-BRL, USDT-BRL",
-	}))
-	if err != nil || strings.Join(c.MercadoBitcoin.Symbols, ",") != "BTC-BRL,USDT-BRL" {
-		t.Errorf("symbols = %v, err %v", c.MercadoBitcoin.Symbols, err)
-	}
-	_, err = Load(env(map[string]string{"TEKEL_BINANCE_SYMBOLS": "", "TEKEL_KRAKEN_SYMBOLS": ""}))
-	if err == nil || !strings.Contains(err.Error(), "TEKEL_MERCADOBITCOIN_SYMBOLS") {
-		t.Errorf("no symbols at all: err = %v", err)
-	}
-}
-
-func TestKlever(t *testing.T) {
-	c, err := Load(env(nil))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if c.Klever.On() || c.Klever.URL != "" {
-		t.Errorf("default = %v %q, want disabled", c.Klever.Symbols, c.Klever.URL)
-	}
-	// The block feed alone is a valid configuration.
-	c, err = Load(env(map[string]string{
-		"TEKEL_BINANCE_SYMBOLS": "", "TEKEL_KRAKEN_SYMBOLS": "",
-		"TEKEL_KLEVER_NETWORK": " mainnet ", "TEKEL_KLEVER_URL": "wss://node.example/subscribe",
-	}))
-	if err != nil || strings.Join(c.Klever.Symbols, ",") != "mainnet" || c.Klever.URL != "wss://node.example/subscribe" {
-		t.Errorf("klever = %v %q, err %v", c.Klever.Symbols, c.Klever.URL, err)
-	}
-	_, err = Load(env(map[string]string{"TEKEL_KLEVER_NETWORK": "mainnet,testnet"}))
-	if err == nil || !strings.Contains(err.Error(), "TEKEL_KLEVER_NETWORK must name one network") {
-		t.Errorf("two networks: err = %v", err)
-	}
-	_, err = Load(env(map[string]string{"TEKEL_BINANCE_SYMBOLS": "", "TEKEL_KRAKEN_SYMBOLS": ""}))
-	if err == nil || !strings.Contains(err.Error(), "TEKEL_KLEVER_NETWORK") {
-		t.Errorf("no feed at all: err = %v", err)
-	}
-}
-
-func TestFeedsOrder(t *testing.T) {
-	c, err := Load(env(map[string]string{
-		"TEKEL_MERCADOBITCOIN_SYMBOLS": "BTC-BRL", "TEKEL_KLEVER_NETWORK": "testnet",
-	}))
+func TestFeeds(t *testing.T) {
+	c, err := Load(env(nil), sources)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var got []string
-	for _, f := range c.Feeds() {
-		got = append(got, f.Symbols[0])
+	for _, f := range c.Feeds {
+		got = append(got, f.Name+"|"+f.URL+"|"+strings.Join(f.Symbols, ","))
 	}
-	if want := "BTCUSDT BTC/USD BTC-BRL testnet"; strings.Join(got, " ") != want {
-		t.Errorf("Feeds() first symbols = %v, want %s", got, want)
+	if want := "alpha|wss://alpha|A1,A2 beta|wss://beta| chain||"; strings.Join(got, " ") != want {
+		t.Errorf("default feeds = %v, want %s (declared order, defaults applied)", got, want)
+	}
+	if c.Feed("beta").On() || !c.Feed("alpha").On() || c.Feed("nope") != nil {
+		t.Errorf("On/Feed lookup wrong: %+v", c.Feeds)
+	}
+
+	c, err = Load(env(map[string]string{
+		"TEKEL_ALPHA_SYMBOLS": "", // turns alpha off
+		"TEKEL_BETA_SYMBOLS":  " B1 , ,B2",
+		"TEKEL_CHAIN_NETWORK": " mainnet ", "TEKEL_CHAIN_URL": "wss://node",
+	}), sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Feed("alpha").On() || strings.Join(c.Feed("beta").Symbols, ",") != "B1,B2" ||
+		strings.Join(c.Feed("chain").Symbols, ",") != "mainnet" || c.Feed("chain").URL != "wss://node" {
+		t.Errorf("overridden feeds = %+v", c.Feeds)
+	}
+}
+
+func TestFeedsRejected(t *testing.T) {
+	_, err := Load(env(map[string]string{"TEKEL_CHAIN_NETWORK": "mainnet,testnet"}), sources)
+	if err == nil || !strings.Contains(err.Error(), "TEKEL_CHAIN_NETWORK must name one value") {
+		t.Errorf("two values for a single source: err = %v", err)
+	}
+	_, err = Load(env(map[string]string{"TEKEL_ALPHA_SYMBOLS": ""}), sources)
+	if err == nil || !strings.Contains(err.Error(), "TEKEL_ALPHA_SYMBOLS, TEKEL_BETA_SYMBOLS, TEKEL_CHAIN_NETWORK") {
+		t.Errorf("no feed on: err = %v, want every symbols variable named", err)
 	}
 }
