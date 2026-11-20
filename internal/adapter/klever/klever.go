@@ -32,6 +32,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsfeed"
 	"github.com/Amadeus-22/tekel/internal/app"
 	"github.com/Amadeus-22/tekel/internal/domain"
 )
@@ -130,36 +131,27 @@ func NewSubscribeRequest() SubscribeRequest {
 
 // Run implements app.Feed.
 func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
-	return wsconn.Run(ctx, f.cfg.Conn, wsconn.Handlers{
-		Subscribe: func(_ context.Context, conn *websocket.Conn) error {
-			return conn.WriteJSON(NewSubscribeRequest())
-		},
-		Up: func(ctx context.Context, at time.Time) error {
-			return emit(ctx, app.Event{Kind: app.EventConnected, At: at})
-		},
-		Down: func(ctx context.Context, at time.Time, cause error) error {
-			return emit(ctx, app.Event{Kind: app.EventDisconnected, At: at, Err: cause})
-		},
-		Message: func(ctx context.Context, msg []byte, received time.Time) error {
-			m, err := Decode(msg, received, f.cfg.Network)
-			if err != nil {
-				f.malformed.Report(msg, received, err)
-				return nil
-			}
-			if m.Error != "" {
-				// The node closes the connection after any handshake error, and
-				// every one of them means our request is wrong.
-				return wsconn.Permanent(fmt.Errorf("node error: %s (%s)", m.Error, f.cfg.URL))
-			}
-			if m.Block == nil {
-				return nil
-			}
-			if m.ChainID != f.chainID {
-				return wsconn.Permanent(fmt.Errorf("node %s serves chain %q, but %s is chain %q",
-					f.cfg.URL, m.ChainID, f.cfg.Network, f.chainID))
-			}
-			return emit(ctx, app.Event{Kind: app.EventBlock, At: received, Block: *m.Block})
-		},
+	subscribe := func(_ context.Context, conn *websocket.Conn) error {
+		return conn.WriteJSON(NewSubscribeRequest())
+	}
+	return wsfeed.Run(ctx, f.cfg.Conn, emit, subscribe, f.malformed, func(msg []byte, received time.Time) ([]app.Event, error) {
+		m, err := Decode(msg, received, f.cfg.Network)
+		if err != nil {
+			return nil, err
+		}
+		if m.Error != "" {
+			// The node closes the connection after any handshake error, and
+			// every one of them means our request is wrong.
+			return nil, wsconn.Permanent(fmt.Errorf("node error: %s (%s)", m.Error, f.cfg.URL))
+		}
+		if m.Block == nil {
+			return nil, nil
+		}
+		if m.ChainID != f.chainID {
+			return nil, wsconn.Permanent(fmt.Errorf("node %s serves chain %q, but %s is chain %q",
+				f.cfg.URL, m.ChainID, f.cfg.Network, f.chainID))
+		}
+		return []app.Event{{Kind: app.EventBlock, At: received, Block: *m.Block}}, nil
 	})
 }
 

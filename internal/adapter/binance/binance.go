@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsfeed"
 	"github.com/Amadeus-22/tekel/internal/app"
 	"github.com/Amadeus-22/tekel/internal/domain"
 )
@@ -85,24 +86,13 @@ func (f *Feed) Kind() domain.StreamKind { return domain.StreamTrades }
 
 // Run implements app.Feed.
 func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
-	return wsconn.Run(ctx, f.cfg.Conn, wsconn.Handlers{
-		Up: func(ctx context.Context, at time.Time) error {
-			return emit(ctx, app.Event{Kind: app.EventConnected, At: at})
-		},
-		Down: func(ctx context.Context, at time.Time, cause error) error {
-			return emit(ctx, app.Event{Kind: app.EventDisconnected, At: at, Err: cause})
-		},
-		Message: func(ctx context.Context, msg []byte, received time.Time) error {
-			t, ok, err := Decode(msg, received)
-			if err != nil {
-				f.malformed.Report(msg, received, err)
-				return nil
-			}
-			if !ok {
-				return nil
-			}
-			return emit(ctx, app.Event{Kind: app.EventTrade, At: received, Trade: t})
-		},
+	// The combined-stream URL subscribes by itself: no subscribe message.
+	return wsfeed.Run(ctx, f.cfg.Conn, emit, nil, f.malformed, func(msg []byte, received time.Time) ([]app.Event, error) {
+		t, ok, err := Decode(msg, received)
+		if err != nil || !ok {
+			return nil, err
+		}
+		return []app.Event{{Kind: app.EventTrade, At: received, Trade: t}}, nil
 	})
 }
 
