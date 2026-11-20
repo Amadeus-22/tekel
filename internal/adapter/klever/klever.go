@@ -41,10 +41,17 @@ import (
 // of the symbol. See docs/adr/0007.
 const Chain = "klever"
 
-// TestnetURL is the public testnet node's subscription endpoint. The public
-// mainnet node (node.mainnet.klever.org) answers 404 on /subscribe (checked
-// 2026-11-10), so mainnet needs the URL of a node that serves it.
-const TestnetURL = "wss://node.testnet.klever.org/subscribe"
+// TestnetURL and MainnetURL are the public nodes' subscription endpoints. The
+// public mainnet node answered 404 on /subscribe until Klever enabled it on
+// 2026-11-19 (see ADR 0007).
+const (
+	TestnetURL = "wss://node.testnet.klever.org/subscribe"
+	MainnetURL = "wss://node.mainnet.klever.org/subscribe"
+)
+
+// PublicURLs maps each network in ChainIDs to its public node's endpoint, the
+// URL New uses when Config.URL is empty.
+var PublicURLs = map[string]string{"mainnet": MainnetURL, "testnet": TestnetURL}
 
 const (
 	// defaultReadTimeout: a block every 4 s and a server ping every 15 s, so
@@ -63,7 +70,8 @@ var ChainIDs = map[string]string{"mainnet": "108", "testnet": "109"}
 
 // Config configures the feed.
 type Config struct {
-	// URL is the node's /subscribe endpoint; empty means TestnetURL on testnet.
+	// URL is the node's /subscribe endpoint; empty means the network's public
+	// node (PublicURLs).
 	URL string
 	// Network is "mainnet" or "testnet"; it is the stream's symbol.
 	Network string
@@ -88,10 +96,7 @@ func New(cfg Config) (*Feed, error) {
 		return nil, fmt.Errorf("klever: network %q must be mainnet or testnet", cfg.Network)
 	}
 	if cfg.URL == "" {
-		if cfg.Network != "testnet" {
-			return nil, fmt.Errorf("klever: no public %s node serves /subscribe; set the URL of one that does", cfg.Network)
-		}
-		cfg.URL = TestnetURL
+		cfg.URL = PublicURLs[cfg.Network]
 	}
 	if cfg.Logger == nil {
 		return nil, errors.New("klever: logger is required")

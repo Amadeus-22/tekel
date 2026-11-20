@@ -129,10 +129,9 @@ func TestSubscribeRequestShape(t *testing.T) {
 func TestNewValidates(t *testing.T) {
 	log := slog.New(slog.DiscardHandler)
 	for name, cfg := range map[string]Config{
-		"no network":          {Logger: log},
-		"unknown network":     {Network: "devnet", URL: "ws://x", Logger: log},
-		"mainnet without url": {Network: "mainnet", Logger: log},
-		"no logger":           {Network: "testnet"},
+		"no network":      {Logger: log},
+		"unknown network": {Network: "devnet", URL: "ws://x", Logger: log},
+		"no logger":       {Network: "testnet"},
 	} {
 		if _, err := New(cfg); err == nil {
 			t.Errorf("%s: New() = nil error", name)
@@ -147,8 +146,18 @@ func TestNewValidates(t *testing.T) {
 		c.URL != TestnetURL || c.ReadTimeout != defaultReadTimeout || c.MaxMessageBytes != maxMessageBytes || f.chainID != "109" {
 		t.Errorf("feed = %s %v %s chain %s conn %+v", f.Exchange(), f.Symbols(), f.Kind(), f.chainID, c)
 	}
-	if _, err := New(Config{Network: "mainnet", URL: "wss://own-node.example/subscribe", Logger: log}); err != nil {
+	f, err = New(Config{Network: "mainnet", Logger: log})
+	if err != nil || f.cfg.Conn.URL != MainnetURL || f.chainID != "108" {
+		t.Errorf("mainnet without url: url %q chain %q, %v", f.cfg.Conn.URL, f.chainID, err)
+	}
+	f, err = New(Config{Network: "mainnet", URL: "wss://own-node.example/subscribe", Logger: log})
+	if err != nil || f.cfg.Conn.URL != "wss://own-node.example/subscribe" {
 		t.Errorf("mainnet with url: %v", err)
+	}
+	for network := range ChainIDs {
+		if PublicURLs[network] == "" {
+			t.Errorf("network %s has no public URL", network)
+		}
 	}
 }
 

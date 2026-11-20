@@ -76,7 +76,7 @@ over LEAN data you already have, with an exit code for CI: see [docs/audit.md](d
 | Binance spot | `<symbol>@trade` | on by default (`BTCUSDT,ETHUSDT`) |
 | Kraken | WebSocket v2 `trade` | on by default (`BTC/USD,ETH/USD`) |
 | Mercado Bitcoin | WebSocket `trade` | Brazil, BRL markets; off by default; LEAN needs a custom market: [docs/mercadobitcoin.md](docs/mercadobitcoin.md) |
-| KleverChain | node `/subscribe` `blocks` | public testnet node, or your own mainnet node; block nonces instead of trade IDs: [docs/klever.md](docs/klever.md) |
+| KleverChain | node `/subscribe` `blocks` | public mainnet or testnet node, or your own; block nonces instead of trade IDs: [docs/klever.md](docs/klever.md) |
 
 ## Dashboards (optional)
 
@@ -102,7 +102,7 @@ Durations use Go syntax (`500ms`, `30s`, `5m`).
 | `TEKEL_BINANCE_SYMBOLS` | `BTCUSDT,ETHUSDT` | Binance symbols; empty disables Binance |
 | `TEKEL_KRAKEN_SYMBOLS` | `BTC/USD,ETH/USD` | Kraken symbols; empty disables Kraken |
 | `TEKEL_MERCADOBITCOIN_SYMBOLS` | off | e.g. `BTC-BRL,USDT-BRL` |
-| `TEKEL_KLEVER_NETWORK` | off | `testnet`, or `mainnet` with `TEKEL_KLEVER_URL` |
+| `TEKEL_KLEVER_NETWORK` | off | `mainnet` or `testnet`; `TEKEL_KLEVER_URL` overrides the public node |
 | `TEKEL_STALE_AFTER` | `60s` | `stale_stream` threshold |
 | `TEKEL_STALE_AFTER_OVERRIDES` | none | per stream, e.g. `kraken:ETH/USD=3m,klever:testnet=20s`; an override that matches no enabled stream stops startup |
 | `TEKEL_CLOCK_SKEW` | `2s` | `clock_skew` threshold |
