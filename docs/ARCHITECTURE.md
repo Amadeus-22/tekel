@@ -88,6 +88,7 @@ flowchart LR
 | `internal/adapter/mercadobitcoin` | WS client, one `trade` subscribe per market, `{"type":"ping"}` keepalive, decoding, server errors are permanent |
 | `internal/adapter/klever` | KleverChain block feed: node `/subscribe` WebSocket, `blocks` subscription, decoding, chain ID check; node errors and a wrong chain are permanent |
 | `internal/adapter/wsconn` | shared reconnect loop with jittered backoff (cap 30s), ping/pong or application ping, handshake header, read deadline; `Malformed` (counts every undecodable message, logs one sample per minute); adapter setup helpers `CheckSymbols`, `Config.CapReadTimeout`, `Config.Bind` |
+| `internal/adapter/wsfeed` | what every websocket exchange feed shares: connection state as app events, malformed messages counted and skipped, permanent errors stop the feed; an adapter passes only its subscribe message and a `Handle` that turns one message into events |
 | `internal/adapter/wsconn/wstest` | local WebSocket test server (test helper, like `httptest`) |
 | `internal/adapter/feedtest` | feed test helpers: `FastConn` (millisecond backoff), `Collect` (run a feed until it emitted n events) |
 | `internal/adapter/sqlite` | `IncidentStore` + incident query, schema, readiness ping |

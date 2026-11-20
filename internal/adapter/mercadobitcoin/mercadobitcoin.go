@@ -30,6 +30,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsfeed"
 	"github.com/Amadeus-22/tekel/internal/app"
 	"github.com/Amadeus-22/tekel/internal/domain"
 )
@@ -135,39 +136,30 @@ func NewSubscribeRequest(symbol string) SubscribeRequest {
 
 // Run implements app.Feed.
 func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
-	return wsconn.Run(ctx, f.cfg.Conn, wsconn.Handlers{
-		Subscribe: func(_ context.Context, conn *websocket.Conn) error {
-			for _, s := range f.cfg.Symbols {
-				if err := conn.WriteJSON(NewSubscribeRequest(s)); err != nil {
-					return err
-				}
+	subscribe := func(_ context.Context, conn *websocket.Conn) error {
+		for _, s := range f.cfg.Symbols {
+			if err := conn.WriteJSON(NewSubscribeRequest(s)); err != nil {
+				return err
 			}
-			return nil
-		},
-		Up: func(ctx context.Context, at time.Time) error {
-			return emit(ctx, app.Event{Kind: app.EventConnected, At: at})
-		},
-		Down: func(ctx context.Context, at time.Time, cause error) error {
-			return emit(ctx, app.Event{Kind: app.EventDisconnected, At: at, Err: cause})
-		},
-		Message: func(ctx context.Context, msg []byte, received time.Time) error {
-			m, err := Decode(msg, received, f.ids)
-			if err != nil {
-				f.malformed.Report(msg, received, err)
-				return nil
-			}
-			if m.Error != "" {
-				// The server's errors are "unknown message type", "invalid JSON",
-				// "already subscribed", "not subscribed" and, for an unknown market,
-				// "invalid pair to subscribe": all mean our requests are wrong, and
-				// reconnecting would repeat them.
-				return wsconn.Permanent(fmt.Errorf("server error: %s (symbols %s)", m.Error, strings.Join(f.cfg.Symbols, ",")))
-			}
-			if m.Trade == nil {
-				return nil
-			}
-			return emit(ctx, app.Event{Kind: app.EventTrade, At: received, Trade: *m.Trade})
-		},
+		}
+		return nil
+	}
+	return wsfeed.Run(ctx, f.cfg.Conn, emit, subscribe, f.malformed, func(msg []byte, received time.Time) ([]app.Event, error) {
+		m, err := Decode(msg, received, f.ids)
+		if err != nil {
+			return nil, err
+		}
+		if m.Error != "" {
+			// The server's errors are "unknown message type", "invalid JSON",
+			// "already subscribed", "not subscribed" and, for an unknown market,
+			// "invalid pair to subscribe": all mean our requests are wrong, and
+			// reconnecting would repeat them.
+			return nil, wsconn.Permanent(fmt.Errorf("server error: %s (symbols %s)", m.Error, strings.Join(f.cfg.Symbols, ",")))
+		}
+		if m.Trade == nil {
+			return nil, nil
+		}
+		return []app.Event{{Kind: app.EventTrade, At: received, Trade: *m.Trade}}, nil
 	})
 }
 

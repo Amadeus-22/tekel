@@ -21,6 +21,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
+	"github.com/Amadeus-22/tekel/internal/adapter/wsfeed"
 	"github.com/Amadeus-22/tekel/internal/app"
 	"github.com/Amadeus-22/tekel/internal/domain"
 )
@@ -107,34 +108,23 @@ func NewSubscribeRequest(symbols []string) SubscribeRequest {
 
 // Run implements app.Feed.
 func (f *Feed) Run(ctx context.Context, emit app.Emit) error {
-	return wsconn.Run(ctx, f.cfg.Conn, wsconn.Handlers{
-		Subscribe: func(_ context.Context, conn *websocket.Conn) error {
-			return conn.WriteJSON(NewSubscribeRequest(f.cfg.Symbols))
-		},
-		Up: func(ctx context.Context, at time.Time) error {
-			return emit(ctx, app.Event{Kind: app.EventConnected, At: at})
-		},
-		Down: func(ctx context.Context, at time.Time, cause error) error {
-			return emit(ctx, app.Event{Kind: app.EventDisconnected, At: at, Err: cause})
-		},
-		Message: func(ctx context.Context, msg []byte, received time.Time) error {
-			m, err := Decode(msg, received)
-			if err != nil {
-				f.malformed.Report(msg, received, err)
-				return nil
-			}
-			if m.SubscribeError != "" {
-				// A rejected symbol is a configuration error; retrying cannot fix it.
-				return wsconn.Permanent(fmt.Errorf("subscribe rejected: %s", m.SubscribeError))
-			}
-			for _, t := range m.Trades {
-				ev := app.Event{Kind: app.EventTrade, At: received, Trade: t}
-				if err := emit(ctx, ev); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+	subscribe := func(_ context.Context, conn *websocket.Conn) error {
+		return conn.WriteJSON(NewSubscribeRequest(f.cfg.Symbols))
+	}
+	return wsfeed.Run(ctx, f.cfg.Conn, emit, subscribe, f.malformed, func(msg []byte, received time.Time) ([]app.Event, error) {
+		m, err := Decode(msg, received)
+		if err != nil {
+			return nil, err
+		}
+		if m.SubscribeError != "" {
+			// A rejected symbol is a configuration error; retrying cannot fix it.
+			return nil, wsconn.Permanent(fmt.Errorf("subscribe rejected: %s", m.SubscribeError))
+		}
+		events := make([]app.Event, 0, len(m.Trades))
+		for _, t := range m.Trades {
+			events = append(events, app.Event{Kind: app.EventTrade, At: received, Trade: t})
+		}
+		return events, nil
 	})
 }
 
