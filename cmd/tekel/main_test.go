@@ -7,9 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Amadeus-22/tekel/internal/adapter/binance"
-	"github.com/Amadeus-22/tekel/internal/adapter/kraken"
-	"github.com/Amadeus-22/tekel/internal/adapter/mercadobitcoin"
 	"github.com/Amadeus-22/tekel/internal/app"
 	"github.com/Amadeus-22/tekel/internal/domain"
 	"github.com/Amadeus-22/tekel/internal/platform/config"
@@ -24,7 +21,7 @@ func TestPipelineConfigMapsEveryField(t *testing.T) {
 			"TEKEL_BUFFER":                "8",
 		}[k]
 		return v, ok
-	})
+	}, sourceConfigs())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +43,7 @@ func TestBuildFeedsHonoursDisabledExchange(t *testing.T) {
 			return "", true
 		}
 		return "", false
-	})
+	}, sourceConfigs())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,29 +55,29 @@ func TestBuildFeedsHonoursDisabledExchange(t *testing.T) {
 		t.Errorf("feeds = %v", feeds)
 	}
 
-	cfg.MercadoBitcoin.Symbols = []string{"BTC-BRL"}
+	cfg.Feed("mercadobitcoin").Symbols = []string{"BTC-BRL"}
 	feeds, err = buildFeeds(cfg, slog.Default(), metrics.New())
 	if err != nil || len(feeds) != 2 || feeds[1].Exchange() != "mercadobitcoin" {
 		t.Errorf("feeds with Mercado Bitcoin = %v, %v", feeds, err)
 	}
-	cfg.MercadoBitcoin.Symbols = []string{"BRLBTC"}
+	cfg.Feed("mercadobitcoin").Symbols = []string{"BRLBTC"}
 	if _, err := buildFeeds(cfg, slog.Default(), metrics.New()); err == nil {
 		t.Error("Mercado Bitcoin symbol in WebSocket spelling accepted")
 	}
-	cfg.MercadoBitcoin.Symbols = nil
+	cfg.Feed("mercadobitcoin").Symbols = nil
 
-	cfg.Klever.Symbols = []string{"testnet"}
+	cfg.Feed("klever").Symbols = []string{"testnet"}
 	feeds, err = buildFeeds(cfg, slog.Default(), metrics.New())
 	if err != nil || len(feeds) != 2 || feeds[1].Exchange() != "klever" || feeds[1].Kind() != domain.StreamBlocks {
 		t.Errorf("feeds with Klever = %v, %v", feeds, err)
 	}
-	cfg.Klever.Symbols = []string{"mainnet"} // no URL: the public mainnet node
+	cfg.Feed("klever").Symbols = []string{"mainnet"} // no URL: the public mainnet node
 	if feeds, err = buildFeeds(cfg, slog.Default(), metrics.New()); err != nil || len(feeds) != 2 || feeds[1].Symbols()[0] != "mainnet" {
 		t.Errorf("feeds with Klever mainnet = %v, %v", feeds, err)
 	}
-	cfg.Klever.Symbols = nil
+	cfg.Feed("klever").Symbols = nil
 
-	cfg.Binance.Symbols = []string{"not valid"}
+	cfg.Feed("binance").Symbols = []string{"not valid"}
 	if _, err := buildFeeds(cfg, slog.Default(), metrics.New()); err == nil {
 		t.Error("invalid symbol accepted")
 	}
@@ -93,7 +90,7 @@ func TestBuildFeedsOrder(t *testing.T) {
 			"TEKEL_KLEVER_NETWORK":         "testnet",
 		}[k]
 		return v, ok
-	})
+	}, sourceConfigs())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,9 +108,10 @@ func TestBuildFeedsOrder(t *testing.T) {
 }
 
 // TestConfigDefaultsMatchPackageDefaults guards against drift: an unset
-// environment must give exactly the defaults the packages themselves declare.
+// environment must give exactly the defaults the app package declares. Feed
+// URL defaults cannot drift: sources.go reads them from the adapters.
 func TestConfigDefaultsMatchPackageDefaults(t *testing.T) {
-	cfg, err := config.Load(func(string) (string, bool) { return "", false })
+	cfg, err := config.Load(func(string) (string, bool) { return "", false }, sourceConfigs())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,14 +123,30 @@ func TestConfigDefaultsMatchPackageDefaults(t *testing.T) {
 	if want := app.DefaultConfig(); !reflect.DeepEqual(pc, want) {
 		t.Errorf("pipeline config from defaults =\n%+v\nwant app.DefaultConfig() =\n%+v", pc, want)
 	}
-	for _, tt := range []struct{ name, got, want string }{
-		{"binance", cfg.Binance.URL, binance.DefaultBaseURL},
-		{"kraken", cfg.Kraken.URL, kraken.DefaultURL},
-		{"mercadobitcoin", cfg.MercadoBitcoin.URL, mercadobitcoin.DefaultURL},
-		{"klever", cfg.Klever.URL, ""}, // empty: klever.New picks the network's klever.PublicURLs entry
-	} {
-		if tt.got != tt.want {
-			t.Errorf("%s default URL = %q, want %q", tt.name, tt.got, tt.want)
+}
+
+func TestSourcesTable(t *testing.T) {
+	names, keys := map[string]bool{}, map[string]bool{}
+	for _, s := range sources {
+		if s.Name == "" || s.SymbolsKey == "" || s.URLKey == "" || s.build == nil {
+			t.Errorf("incomplete source %+v", s.Source)
 		}
+		if names[s.Name] || keys[s.SymbolsKey] || keys[s.URLKey] {
+			t.Errorf("source %q repeats a name or an environment variable", s.Name)
+		}
+		names[s.Name], keys[s.SymbolsKey], keys[s.URLKey] = true, true, true
+	}
+	cfg, err := config.Load(func(string) (string, bool) { return "", false }, sourceConfigs())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var on []string
+	for _, f := range cfg.Feeds {
+		if f.On() {
+			on = append(on, f.Name+"="+strings.Join(f.Symbols, ","))
+		}
+	}
+	if want := "binance=BTCUSDT,ETHUSDT kraken=BTC/USD,ETH/USD"; strings.Join(on, " ") != want {
+		t.Errorf("feeds on by default = %v, want %s", on, want)
 	}
 }
