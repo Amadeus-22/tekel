@@ -1,5 +1,15 @@
 # Mercado Bitcoin (Brazil)
 
+> **Status, 2026-11-20: blocked at the provider's edge.** Mercado Bitcoin's
+> websocket (`wss://ws.mercadobitcoin.net/ws`), its REST API and even its API
+> documentation answer HTTP 403 from Cloudflare to automated clients. We saw it
+> from a residential connection in Brazil and from a cloud network, with and
+> without Tekel. Tekel logs `dial wss://ws.mercadobitcoin.net/ws: websocket: bad
+> handshake (HTTP 403)` and keeps retrying with backoff; nothing in Tekel can or
+> should get around the block. The feed is off by default, so this only affects
+> you if you set `TEKEL_MERCADOBITCOIN_SYMBOLS`. If it starts answering again,
+> please open an issue so this note can go.
+
 Set `TEKEL_MERCADOBITCOIN_SYMBOLS=BTC-BRL,USDT-BRL` (Mercado Bitcoin's
 `BASE-QUOTE` spelling). Bars go to
 `crypto/mercadobitcoin/minute/btcbrl/<yyyymmdd>_trade.zip`.

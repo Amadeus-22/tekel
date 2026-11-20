@@ -75,7 +75,7 @@ over LEAN data you already have, with an exit code for CI: see [docs/audit.md](d
 |---|---|---|
 | Binance spot | `<symbol>@trade` | on by default (`BTCUSDT,ETHUSDT`) |
 | Kraken | WebSocket v2 `trade` | on by default (`BTC/USD,ETH/USD`) |
-| Mercado Bitcoin | WebSocket `trade` | Brazil, BRL markets; off by default; LEAN needs a custom market: [docs/mercadobitcoin.md](docs/mercadobitcoin.md) |
+| Mercado Bitcoin | WebSocket `trade` | Brazil, BRL markets; off by default; **endpoints answer 403 to automated clients since 2026-11** and LEAN needs a custom market: [docs/mercadobitcoin.md](docs/mercadobitcoin.md) |
 | KleverChain | node `/subscribe` `blocks` | public mainnet or testnet node, or your own; block nonces instead of trade IDs: [docs/klever.md](docs/klever.md) |
 
 ## Dashboards (optional)
