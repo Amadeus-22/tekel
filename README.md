@@ -116,6 +116,15 @@ Durations use Go syntax (`500ms`, `30s`, `5m`).
 Endpoint URLs, spike, duplicate-window, buffer and shutdown settings are in
 [.env.example](.env.example).
 
+## Status page
+
+Open `http://127.0.0.1:8080/` for a live page anyone can read: whether every feed is
+healthy right now, the last trade or block and its lag per stream, and the last 24
+hours of incidents with repeats grouped. It refreshes every 10 seconds, is served by
+the same binary, and loads nothing from other sites (strict Content-Security-Policy).
+
+![Tekel status page: all feeds healthy, Binance, KleverChain and Kraken streams with lag, and the incidents of the last 24 hours](docs/assets/status-page.png)
+
 ## Alerts
 
 Set a Telegram bot or a webhook and Tekel tells you the moment data goes

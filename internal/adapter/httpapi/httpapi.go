@@ -54,6 +54,9 @@ func NewHandler(d Deps) http.Handler {
 	mux.Handle("GET /metrics", d.Metrics)
 	mux.HandleFunc("GET /v1/streams", h.streams)
 	mux.HandleFunc("GET /v1/incidents", h.incidents)
+	page := statusPage()
+	mux.Handle("GET /{$}", page)
+	mux.Handle("GET /assets/", page)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "not_found", "no route for "+r.Method+" "+r.URL.Path)
 	})
