@@ -109,9 +109,27 @@ Durations use Go syntax (`500ms`, `30s`, `5m`).
 | `TEKEL_DATA_DIR` | `./data` | LEAN data folder |
 | `TEKEL_DB_PATH` | `./tekel.db` | SQLite incident database |
 | `TEKEL_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+| `TEKEL_TELEGRAM_BOT_TOKEN`, `TEKEL_TELEGRAM_CHAT_ID` | off | send alerts to a Telegram chat through your bot (set both) |
+| `TEKEL_WEBHOOK_URL` | off | send alerts to a Slack or Discord incoming webhook, or any URL (JSON with the incident) |
+| `TEKEL_ALERT_KINDS` | `sequence_gap,stale_stream` | which incident kinds are sent; every kind is always saved |
 
 Endpoint URLs, spike, duplicate-window, buffer and shutdown settings are in
 [.env.example](.env.example).
+
+## Alerts
+
+Set a Telegram bot or a webhook and Tekel tells you the moment data goes
+missing, instead of you finding out from a broken backtest:
+
+```
+tekel: binance BTCUSDT sequence_gap — 3 trades missing after id 100 (2026-11-21 11:59:58 → 12:00:00 UTC)
+```
+
+Alerts never slow the feeds down: the incident is saved first, notifications go
+through a bounded queue, a full queue drops the notification (not the incident),
+and each stream gets at most one message per kind per minute. Outcomes are counted
+in `tekel_alerts_total{sender,outcome}`. With no sender configured, nothing leaves
+the process.
 
 ## HTTP API and metrics
 
@@ -125,15 +143,16 @@ Endpoint URLs, spike, duplicate-window, buffer and shutdown settings are in
 Errors are `{"error":{"code":"snake_case","message":"..."}}`. Metrics:
 `tekel_trades_total`, `tekel_incidents_total{kind}`, `tekel_feed_lag_seconds`,
 `tekel_connected`, `tekel_decode_errors_total`, `tekel_backpressure_seconds_total`,
-`tekel_late_trades_total`, `tekel_sink_errors_total`, labelled by `exchange` and
+`tekel_late_trades_total`, `tekel_sink_errors_total`, `tekel_alerts_total`, labelled by `exchange` and
 `symbol` where they apply (full list in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#metrics)).
 
 ## Footprint and privacy
 
 - Writes only `TEKEL_DATA_DIR` (`./data`) and `TEKEL_DB_PATH` (`./tekel.db`, plus
   SQLite's `-wal`/`-shm` files next to it).
-- Connects only to the exchange and node endpoints you enable. No telemetry, no
-  update checks, no API keys.
+- Connects only to the exchange and node endpoints you enable, and to the alert
+  webhook or Telegram if you configure one. No telemetry, no update checks, no API
+  keys. The Telegram token never appears in logs or errors.
 - Listens on 127.0.0.1 by default.
 - One static Go binary; the image is distroless (no shell) and runs as `nonroot`,
   about 25 MB.

@@ -140,3 +140,23 @@ func TestFeedsRejected(t *testing.T) {
 		t.Errorf("no feed on: err = %v, want every symbols variable named", err)
 	}
 }
+
+func TestAlerts(t *testing.T) {
+	c, err := Load(env(nil), sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.AlertKinds) != 2 || c.AlertKinds[0] != domain.KindSequenceGap || c.WebhookURL != "" || c.TelegramBotToken != "" {
+		t.Errorf("alert defaults = %v %q %q, want gaps and stale streams, no sender", c.AlertKinds, c.WebhookURL, c.TelegramBotToken)
+	}
+	_, err = Load(env(map[string]string{
+		"TEKEL_ALERT_KINDS":        "sequence_gap,nope",
+		"TEKEL_TELEGRAM_BOT_TOKEN": "t",
+		"TEKEL_WEBHOOK_URL":        "ftp://x",
+	}), sources)
+	for _, want := range []string{"TEKEL_ALERT_KINDS", "must be set together", "TEKEL_WEBHOOK_URL must be an http(s) URL"} {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("error %v does not mention %q", err, want)
+		}
+	}
+}

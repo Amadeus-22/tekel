@@ -16,11 +16,13 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
 	"github.com/Amadeus-22/tekel/internal/adapter/httpapi"
 	"github.com/Amadeus-22/tekel/internal/adapter/leanfs"
+	"github.com/Amadeus-22/tekel/internal/adapter/notify"
 	"github.com/Amadeus-22/tekel/internal/adapter/sqlite"
 	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
 	"github.com/Amadeus-22/tekel/internal/app"
@@ -69,8 +71,12 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	incidents, alerts, err := alerting(cfg, store, log, m)
+	if err != nil {
+		return err
+	}
 	pipeline, err := app.NewPipeline(pipelineConfig(cfg), app.Deps{
-		Feeds: feeds, Incidents: store, Bars: bars, Metrics: m, Logger: log,
+		Feeds: feeds, Incidents: incidents, Bars: bars, Metrics: m, Logger: log,
 	})
 	if err != nil {
 		return err
@@ -81,6 +87,9 @@ func run() error {
 
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return pipeline.Run(gctx) })
+	if alerts != nil {
+		g.Go(func() error { return alerts.Run(gctx) })
+	}
 	g.Go(func() error {
 		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			return fmt.Errorf("http server: %w", err)
@@ -105,6 +114,29 @@ func run() error {
 	err = g.Wait()
 	log.Info("tekel stopped", "error", fmt.Sprint(err))
 	return err
+}
+
+// alerting wraps the incident store with notifications when a sender is
+// configured; with none it returns the store itself and makes no connection.
+func alerting(cfg config.Config, store app.IncidentStore, log *slog.Logger, m *metrics.Metrics) (app.IncidentStore, *notify.Store, error) {
+	client := &http.Client{Timeout: 15 * time.Second}
+	var senders []notify.Sender
+	if cfg.WebhookURL != "" {
+		senders = append(senders, notify.Webhook{URL: cfg.WebhookURL, Client: client})
+	}
+	if cfg.TelegramBotToken != "" {
+		senders = append(senders, notify.Telegram{Token: cfg.TelegramBotToken, ChatID: cfg.TelegramChatID, Client: client})
+	}
+	if len(senders) == 0 || len(cfg.AlertKinds) == 0 {
+		return store, nil, nil
+	}
+	nc := notify.DefaultConfig()
+	nc.Kinds, nc.Logger, nc.Count = cfg.AlertKinds, log, m.Alert
+	n, err := notify.New(store, senders, nc)
+	if err != nil {
+		return nil, nil, err
+	}
+	return n, n, nil
 }
 
 // buildFeeds returns the adapters of the feeds that are on, in the order of

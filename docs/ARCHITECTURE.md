@@ -91,6 +91,7 @@ flowchart LR
 | `internal/adapter/wsfeed` | what every websocket exchange feed shares: connection state as app events, malformed messages counted and skipped, permanent errors stop the feed; an adapter passes only its subscribe message and a `Handle` that turns one message into events |
 | `internal/adapter/wsconn/wstest` | local WebSocket test server (test helper, like `httptest`) |
 | `internal/adapter/feedtest` | feed test helpers: `FastConn` (millisecond backoff), `Collect` (run a feed until it emitted n events) |
+| `internal/adapter/notify` | alerts: decorates `IncidentStore` (save first, then queue), bounded queue drained by one goroutine, per stream and kind rate limit; senders `Webhook` (Slack, Discord, generic JSON) and `Telegram` |
 | `internal/adapter/sqlite` | `IncidentStore` + incident query, schema, readiness ping |
 | `internal/adapter/leanfs` | `BarSink` writing LEAN zips atomically (temp file + rename), continues a day after restart; `Source` (read-only `LeanSource` over a folder or one zip) |
 | `internal/adapter/auditreport` | renders an `AuditReport` as a table or JSON; golden fixtures trimmed from LEAN samples in `testdata/` |
@@ -110,6 +111,7 @@ flowchart LR
 | Klever node serves another chain than the configured network | permanent error naming both chain IDs; no block is recorded |
 | Slow sink | bounded channel; if full, the pipeline blocks the feed and `tekel_backpressure_seconds_total` rises (no silent drops) |
 | Sink write fails | logged, counted in `tekel_sink_errors_total`; validation continues |
+| Alert endpoint slow, down or full | incident already saved; notification counted as `failed` or `dropped` in `tekel_alerts_total`; the pipeline never waits |
 | Trade arrives after its bar was written | kept out of bars, counted in `tekel_late_trades_total` (still validated) |
 | Clean shutdown | feeds stop, buffered events drain, partial bars are written, open disconnect windows recorded |
 | Crash mid-day | bar files are written atomically; on restart the day file is loaded and continued, and a bar for an already-written minute is merged. Trades of the minute in progress at the crash are lost from that bar |
@@ -120,7 +122,7 @@ flowchart LR
 `tekel_feed_lag_seconds{exchange,symbol}` (histogram of received − exchange time),
 `tekel_connected{exchange}`, `tekel_decode_errors_total{exchange}`,
 `tekel_backpressure_seconds_total{exchange}`, `tekel_late_trades_total{exchange,symbol}`,
-`tekel_sink_errors_total{sink}`, plus the Go runtime and process collectors.
+`tekel_sink_errors_total{sink}`, `tekel_alerts_total{sender,outcome}`, plus the Go runtime and process collectors.
 
 ## ADRs
 

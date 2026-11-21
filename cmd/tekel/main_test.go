@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"reflect"
 	"strings"
@@ -150,3 +151,23 @@ func TestSourcesTable(t *testing.T) {
 		t.Errorf("feeds on by default = %v, want %s", on, want)
 	}
 }
+
+func TestAlertingIsOffWithoutASender(t *testing.T) {
+	cfg, err := config.Load(func(string) (string, bool) { return "", false }, sourceConfigs())
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := &nopStore{}
+	got, alerts, err := alerting(cfg, store, slog.New(slog.DiscardHandler), metrics.New())
+	if err != nil || alerts != nil || got != store {
+		t.Fatalf("alerting with no sender = %v, %v, %v; want the plain store and no notifier", got, alerts, err)
+	}
+	cfg.TelegramBotToken, cfg.TelegramChatID = "t", "c"
+	if got, alerts, err = alerting(cfg, store, slog.New(slog.DiscardHandler), metrics.New()); err != nil || alerts == nil || got == store {
+		t.Fatalf("alerting with Telegram = %v, %v, %v; want a notifier wrapping the store", got, alerts, err)
+	}
+}
+
+type nopStore struct{}
+
+func (*nopStore) Save(context.Context, domain.Incident) error { return nil }
