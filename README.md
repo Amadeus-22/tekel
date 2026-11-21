@@ -24,15 +24,14 @@ and a **silent gap** (the sequence jumped while connected: the feed itself lost 
 
 ## Try it in one minute
 
-With Docker, no clone and no API key (every feed is public). The image is published
-when v0.2.0 is tagged:
+With Docker, no clone and no API key (every feed is public):
 
 ```sh
 docker run --rm -p 127.0.0.1:8080:8080 \
   -e TEKEL_BINANCE_SYMBOLS=BTCUSDT,ETHUSDT \
   -e TEKEL_KRAKEN_SYMBOLS=BTC/USD \
   -v tekel-data:/var/lib/tekel \
-  ghcr.io/amadeus-22/tekel:0.2.0
+  ghcr.io/amadeus-22/tekel:0.3.0
 ```
 
 ```sh
