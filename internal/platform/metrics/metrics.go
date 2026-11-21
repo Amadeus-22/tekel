@@ -25,6 +25,7 @@ type Metrics struct {
 	backpressure *prometheus.CounterVec
 	lateTrades   *prometheus.CounterVec
 	sinkErrors   *prometheus.CounterVec
+	alerts       *prometheus.CounterVec
 }
 
 // New registers every metric, plus the Go runtime and process collectors, on a
@@ -65,11 +66,15 @@ func New() *Metrics {
 			Name: "tekel_sink_errors_total",
 			Help: "Failed writes, by sink (incidents, bars).",
 		}, []string{"sink"}),
+		alerts: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tekel_alerts_total",
+			Help: "Incident notifications by sender and outcome (sent, failed; dropped and limited have an empty sender).",
+		}, []string{"sender", "outcome"}),
 	}
 	m.reg.MustRegister(
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
-		m.trades, m.incidents, m.lag, m.connected, m.decodeErrors, m.backpressure, m.lateTrades, m.sinkErrors,
+		m.trades, m.incidents, m.lag, m.connected, m.decodeErrors, m.backpressure, m.lateTrades, m.sinkErrors, m.alerts,
 	)
 	return m
 }
@@ -117,3 +122,6 @@ func (m *Metrics) SinkError(sink string) { m.sinkErrors.WithLabelValues(sink).In
 
 // DecodeError counts one malformed message; adapters receive it as a callback.
 func (m *Metrics) DecodeError(exchange string) { m.decodeErrors.WithLabelValues(exchange).Inc() }
+
+// Alert counts one incident notification outcome.
+func (m *Metrics) Alert(sender, outcome string) { m.alerts.WithLabelValues(sender, outcome).Inc() }

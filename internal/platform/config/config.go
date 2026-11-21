@@ -39,6 +39,13 @@ type Config struct {
 
 	Buffer   int
 	BarGrace time.Duration
+
+	// Alerts: incident kinds to notify, and where. Each sender is off unless
+	// configured; with none, nothing leaves the process.
+	AlertKinds       []domain.IncidentKind
+	WebhookURL       string
+	TelegramBotToken string
+	TelegramChatID   string
 }
 
 // Source declares the environment variables of one feed. The list of sources
@@ -107,6 +114,11 @@ func Load(lookup Lookup, sources []Source) (Config, error) {
 
 		Buffer:   p.integer("TEKEL_BUFFER", 4096),
 		BarGrace: p.duration("TEKEL_BAR_GRACE", 2*time.Second),
+
+		AlertKinds:       p.kinds("TEKEL_ALERT_KINDS", "sequence_gap,stale_stream"),
+		WebhookURL:       p.str("TEKEL_WEBHOOK_URL", ""),
+		TelegramBotToken: p.str("TEKEL_TELEGRAM_BOT_TOKEN", ""),
+		TelegramChatID:   p.str("TEKEL_TELEGRAM_CHAT_ID", ""),
 	}
 	p.check(c.HTTPAddr != "", "TEKEL_HTTP_ADDR must not be empty")
 	p.check(c.DataDir != "", "TEKEL_DATA_DIR must not be empty")
@@ -121,6 +133,10 @@ func Load(lookup Lookup, sources []Source) (Config, error) {
 	}
 	p.check(slices.ContainsFunc(c.Feeds, Feed.On),
 		"at least one of "+strings.Join(keys, ", ")+" must be set")
+	p.check((c.TelegramBotToken == "") == (c.TelegramChatID == ""),
+		"TEKEL_TELEGRAM_BOT_TOKEN and TEKEL_TELEGRAM_CHAT_ID must be set together")
+	p.check(c.WebhookURL == "" || strings.HasPrefix(c.WebhookURL, "https://") || strings.HasPrefix(c.WebhookURL, "http://"),
+		"TEKEL_WEBHOOK_URL must be an http(s) URL")
 	p.check(c.ShutdownTimeout > 0, "TEKEL_SHUTDOWN_TIMEOUT must be positive")
 	p.check(c.Buffer > 0, "TEKEL_BUFFER must be positive")
 	switch c.LogLevel {
@@ -164,6 +180,20 @@ func (p *parser) list(key, def string) []string {
 		if s = strings.TrimSpace(s); s != "" {
 			out = append(out, s)
 		}
+	}
+	return out
+}
+
+// kinds reads a list of incident kinds.
+func (p *parser) kinds(key, def string) []domain.IncidentKind {
+	var out []domain.IncidentKind
+	for _, s := range p.list(key, def) {
+		k, err := domain.ParseIncidentKind(s)
+		if err != nil {
+			p.fail("%s: %v", key, err)
+			continue
+		}
+		out = append(out, k)
 	}
 	return out
 }

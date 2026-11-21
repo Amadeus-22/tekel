@@ -20,6 +20,10 @@ services:
       TEKEL_MERCADOBITCOIN_SYMBOLS: ${TEKEL_MERCADOBITCOIN_SYMBOLS:-}
       TEKEL_KLEVER_NETWORK: ${TEKEL_KLEVER_NETWORK:-}
       TEKEL_STALE_AFTER_OVERRIDES: ${TEKEL_STALE_AFTER_OVERRIDES:-}
+      # Alerts, off unless set in the shell (see README "Alerts").
+      TEKEL_TELEGRAM_BOT_TOKEN: ${TEKEL_TELEGRAM_BOT_TOKEN:-}
+      TEKEL_TELEGRAM_CHAT_ID: ${TEKEL_TELEGRAM_CHAT_ID:-}
+      TEKEL_WEBHOOK_URL: ${TEKEL_WEBHOOK_URL:-}
     volumes:
       # LEAN bars under /var/lib/tekel/data, incidents in tekel.db
       - tekel-data:/var/lib/tekel
