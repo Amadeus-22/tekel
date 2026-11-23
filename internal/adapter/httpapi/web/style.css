@@ -73,3 +73,6 @@ footer { max-width: 1100px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 32px) 32
   td.when { font-size: 12px; color: var(--muted); }
   td:nth-child(2) { font-weight: 600; }
 }
+.stream .ref { color: var(--muted); }
+.dev { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ok); }
+.dev.off { color: var(--down); }

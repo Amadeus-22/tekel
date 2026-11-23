@@ -24,6 +24,10 @@ services:
       TEKEL_TELEGRAM_BOT_TOKEN: ${TEKEL_TELEGRAM_BOT_TOKEN:-}
       TEKEL_TELEGRAM_CHAT_ID: ${TEKEL_TELEGRAM_CHAT_ID:-}
       TEKEL_WEBHOOK_URL: ${TEKEL_WEBHOOK_URL:-}
+      # Reference prices, off unless set (docs/coinmarketcap.md).
+      TEKEL_CMC_API_KEY: ${TEKEL_CMC_API_KEY:-}
+      TEKEL_REFERENCE_INTERVAL: ${TEKEL_REFERENCE_INTERVAL:-60s}
+      TEKEL_REFERENCE_THRESHOLD: ${TEKEL_REFERENCE_THRESHOLD:-0.01}
     volumes:
       # LEAN bars under /var/lib/tekel/data, incidents in tekel.db
       - tekel-data:/var/lib/tekel

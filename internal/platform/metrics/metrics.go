@@ -26,6 +26,8 @@ type Metrics struct {
 	lateTrades   *prometheus.CounterVec
 	sinkErrors   *prometheus.CounterVec
 	alerts       *prometheus.CounterVec
+	refFetches   *prometheus.CounterVec
+	refDeviation *prometheus.GaugeVec
 }
 
 // New registers every metric, plus the Go runtime and process collectors, on a
@@ -70,11 +72,20 @@ func New() *Metrics {
 			Name: "tekel_alerts_total",
 			Help: "Incident notifications by sender and outcome (sent, failed; dropped and limited have an empty sender).",
 		}, []string{"sender", "outcome"}),
+		refFetches: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tekel_reference_fetches_total",
+			Help: "Reference price requests (CoinMarketCap) by outcome (ok, failed).",
+		}, []string{"outcome"}),
+		refDeviation: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "tekel_reference_deviation_ratio",
+			Help: "Last trade minus reference price, divided by the reference price (0.01 = 1% above).",
+		}, []string{"exchange", "symbol"}),
 	}
 	m.reg.MustRegister(
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		m.trades, m.incidents, m.lag, m.connected, m.decodeErrors, m.backpressure, m.lateTrades, m.sinkErrors, m.alerts,
+		m.refFetches, m.refDeviation,
 	)
 	return m
 }
@@ -125,3 +136,17 @@ func (m *Metrics) DecodeError(exchange string) { m.decodeErrors.WithLabelValues(
 
 // Alert counts one incident notification outcome.
 func (m *Metrics) Alert(sender, outcome string) { m.alerts.WithLabelValues(sender, outcome).Inc() }
+
+// ReferenceFetch implements app.ReferenceMetrics.
+func (m *Metrics) ReferenceFetch(ok bool) {
+	outcome := "failed"
+	if ok {
+		outcome = "ok"
+	}
+	m.refFetches.WithLabelValues(outcome).Inc()
+}
+
+// ReferenceDeviation implements app.ReferenceMetrics.
+func (m *Metrics) ReferenceDeviation(exchange, symbol string, deviation float64) {
+	m.refDeviation.WithLabelValues(exchange, symbol).Set(deviation)
+}

@@ -62,6 +62,7 @@ Every stream, live, with each hit stored as an incident in SQLite:
 | `price_spike` | price is far from the rolling median (k × MAD rule); trades only |
 | `stale_stream` | a connected stream was silent for too long |
 | `disconnect` | the connection was down; records the known-gap window |
+| `price_deviation` | the last trade is too far from CoinMarketCap's price for the same asset (optional, needs an API key: see [docs/coinmarketcap.md](docs/coinmarketcap.md)) |
 
 Trades also become one-minute bars in the exact layout QuantConnect LEAN reads
 ([ADR 0001](docs/adr/0001-lean-output-format.md)). Flagged trades stay in the bars;
@@ -111,6 +112,10 @@ Durations use Go syntax (`500ms`, `30s`, `5m`).
 | `TEKEL_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `TEKEL_TELEGRAM_BOT_TOKEN`, `TEKEL_TELEGRAM_CHAT_ID` | off | send alerts to a Telegram chat through your bot (set both) |
 | `TEKEL_WEBHOOK_URL` | off | send alerts to a Slack or Discord incoming webhook, or any URL (JSON with the incident) |
+| `TEKEL_CMC_API_KEY` | off | compare every trade stream with CoinMarketCap's price ([docs/coinmarketcap.md](docs/coinmarketcap.md)) |
+| `TEKEL_REFERENCE_INTERVAL` | `60s` | how often reference prices are fetched (minimum 10s; one request per quote currency) |
+| `TEKEL_REFERENCE_THRESHOLD` | `0.01` | relative distance that raises `price_deviation` (0.01 = 1%) |
+| `TEKEL_CMC_URL` | `https://pro-api.coinmarketcap.com` | CoinMarketCap API base URL |
 | `TEKEL_ALERT_KINDS` | `sequence_gap,stale_stream` | which incident kinds are sent; every kind is always saved |
 
 Endpoint URLs, spike, duplicate-window, buffer and shutdown settings are in

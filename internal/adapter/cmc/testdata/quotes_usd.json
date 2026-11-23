@@ -1,0 +1,86 @@
+{
+ "status": {
+  "timestamp": "2026-11-23T17:57:27.628Z",
+  "error_code": 0,
+  "error_message": null,
+  "credit_count": 1
+ },
+ "data": {
+  "BTC": [
+   {
+    "id": 1,
+    "name": "Bitcoin",
+    "symbol": "BTC",
+    "cmc_rank": 1,
+    "quote": {
+     "USD": {
+      "price": 61606.238469165975,
+      "last_updated": "2026-11-23T17:56:05.000Z"
+     }
+    }
+   },
+   {
+    "id": 38552,
+    "name": "Bitcoin Base",
+    "symbol": "BTC",
+    "cmc_rank": 3101,
+    "quote": {
+     "USD": {
+      "price": 0.00323886350840805,
+      "last_updated": "2026-11-23T17:56:05.000Z"
+     }
+    }
+   },
+   {
+    "id": 38692,
+    "name": "Bitcoin Second Chance",
+    "symbol": "BTC",
+    "cmc_rank": 3462,
+    "quote": {
+     "USD": {
+      "price": 0.00129533959454374,
+      "last_updated": "2026-11-23T17:56:05.000Z"
+     }
+    }
+   }
+  ],
+  "ETH": [
+   {
+    "id": 1027,
+    "name": "Ethereum",
+    "symbol": "ETH",
+    "cmc_rank": 2,
+    "quote": {
+     "USD": {
+      "price": 1740.3022842971814,
+      "last_updated": "2026-11-23T17:56:05.000Z"
+     }
+    }
+   },
+   {
+    "id": 39555,
+    "name": "Bridged ETH (NEAR Intents)",
+    "symbol": "ETH",
+    "cmc_rank": 7882,
+    "quote": {
+     "USD": {
+      "price": 1744.9853850117427,
+      "last_updated": "2026-11-23T17:56:05.000Z"
+     }
+    }
+   },
+   {
+    "id": 29991,
+    "name": "The Infinite Garden",
+    "symbol": "ETH",
+    "cmc_rank": null,
+    "quote": {
+     "USD": {
+      "price": null,
+      "last_updated": "2026-11-23T17:56:05.000Z"
+     }
+    }
+   }
+  ]
+ }
+}

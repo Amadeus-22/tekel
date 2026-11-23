@@ -35,6 +35,7 @@ operational event; the second is a data-quality defect.
   | `price_spike` | price deviates from the rolling median by more than max(k × 1.4826 × MAD, min_deviation × median) |
   | `stale_stream` | no trade for longer than the per-symbol threshold |
   | `disconnect` | connection lost; records the known-gap window |
+  | `price_deviation` | abs(last trade − reference) / reference ≥ threshold, against CoinMarketCap (`domain/reference`, run by `app.ReferenceCheck` on a timer, not per trade); raised once until the stream is back under half the threshold |
 - Sinks: LEAN-format minute trade bars (`data/crypto/<market>/minute/<symbol>/<yyyymmdd>_trade.zip`,
   CSV: ms-since-midnight, open, high, low, close, volume). Layout verified
   against LEAN's own readme and sample data: see [ADR 0001](adr/0001-lean-output-format.md).
@@ -81,8 +82,9 @@ flowchart LR
 | `internal/domain` | `Trade`, `Block` (chain block), `StreamKind`, `Incident`, `Bar`, exact `Decimal`, sentinel errors |
 | `internal/domain/quality` | validators and per-stream state (`Stream`; `NewBlockStream` runs the same rules over block nonces, without the price check), `SpikeRule`/`SpikeWindow` shared with audit; pure |
 | `internal/domain/audit` | LEAN path recognition, row parsers and audit checks (`Checker`, `CheckDays`); pure |
+| `internal/domain/reference` | reference price check: `SplitPair`/`AssetFor` (exchange symbol → asset and currency, stablecoins as USD), `Monitor` (deviation with hysteresis, one incident per breach); pure |
 | `internal/domain/bars` | minute bar aggregation (`Aggregator`) and `Merge`; pure |
-| `internal/app` | `Pipeline`: fan-in of feeds, runs validators, routes trades to sinks (blocks only to incidents), serves stream status; ports `Feed` (declares its `StreamKind`), `IncidentStore`, `BarSink`, `Metrics`. `Audit`: runs the audit over a `LeanSource`, builds `AuditReport` |
+| `internal/app` | `Pipeline`: fan-in of feeds, runs validators, routes trades to sinks (blocks only to incidents), serves stream status; ports `Feed` (declares its `StreamKind`), `IncidentStore`, `BarSink`, `Metrics`. `Audit`: runs the audit over a `LeanSource`, builds `AuditReport`. `ReferenceCheck`: on a timer, reads the pipeline's streams, fetches reference quotes (port `ReferenceSource`, one call per currency) and records `price_deviation` through `Pipeline.Record` |
 | `internal/adapter/binance` | combined-stream `@trade` client, message decoding |
 | `internal/adapter/kraken` | WS v2 client, `trade` subscribe, decoding, rejects bad symbols as permanent errors |
 | `internal/adapter/mercadobitcoin` | WS client, one `trade` subscribe per market, `{"type":"ping"}` keepalive, decoding, server errors are permanent |
@@ -91,6 +93,7 @@ flowchart LR
 | `internal/adapter/wsfeed` | what every websocket exchange feed shares: connection state as app events, malformed messages counted and skipped, permanent errors stop the feed; an adapter passes only its subscribe message and a `Handle` that turns one message into events |
 | `internal/adapter/wsconn/wstest` | local WebSocket test server (test helper, like `httptest`) |
 | `internal/adapter/feedtest` | feed test helpers: `FastConn` (millisecond backoff), `Collect` (run a feed until it emitted n events) |
+| `internal/adapter/cmc` | CoinMarketCap Pro API client (`/v2/cryptocurrency/quotes/latest`), implements `app.ReferenceSource`; keeps the best-ranked coin per symbol; key only in a header |
 | `internal/adapter/notify` | alerts: decorates `IncidentStore` (save first, then queue), bounded queue drained by one goroutine, per stream and kind rate limit; senders `Webhook` (Slack, Discord, generic JSON) and `Telegram` |
 | `internal/adapter/sqlite` | `IncidentStore` + incident query, schema, readiness ping |
 | `internal/adapter/leanfs` | `BarSink` writing LEAN zips atomically (temp file + rename), continues a day after restart; `Source` (read-only `LeanSource` over a folder or one zip) |

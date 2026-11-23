@@ -46,6 +46,12 @@ type Config struct {
 	WebhookURL       string
 	TelegramBotToken string
 	TelegramChatID   string
+
+	// Reference prices (CoinMarketCap): off unless CMCAPIKey is set.
+	CMCAPIKey          string
+	CMCURL             string
+	ReferenceInterval  time.Duration
+	ReferenceThreshold float64
 }
 
 // Source declares the environment variables of one feed. The list of sources
@@ -119,6 +125,11 @@ func Load(lookup Lookup, sources []Source) (Config, error) {
 		WebhookURL:       p.str("TEKEL_WEBHOOK_URL", ""),
 		TelegramBotToken: p.str("TEKEL_TELEGRAM_BOT_TOKEN", ""),
 		TelegramChatID:   p.str("TEKEL_TELEGRAM_CHAT_ID", ""),
+
+		CMCAPIKey:          p.str("TEKEL_CMC_API_KEY", ""),
+		CMCURL:             p.str("TEKEL_CMC_URL", "https://pro-api.coinmarketcap.com"),
+		ReferenceInterval:  p.duration("TEKEL_REFERENCE_INTERVAL", 60*time.Second),
+		ReferenceThreshold: p.float("TEKEL_REFERENCE_THRESHOLD", 0.01),
 	}
 	p.check(c.HTTPAddr != "", "TEKEL_HTTP_ADDR must not be empty")
 	p.check(c.DataDir != "", "TEKEL_DATA_DIR must not be empty")
@@ -137,6 +148,10 @@ func Load(lookup Lookup, sources []Source) (Config, error) {
 		"TEKEL_TELEGRAM_BOT_TOKEN and TEKEL_TELEGRAM_CHAT_ID must be set together")
 	p.check(c.WebhookURL == "" || strings.HasPrefix(c.WebhookURL, "https://") || strings.HasPrefix(c.WebhookURL, "http://"),
 		"TEKEL_WEBHOOK_URL must be an http(s) URL")
+	p.check(c.ReferenceInterval >= 10*time.Second,
+		"TEKEL_REFERENCE_INTERVAL must be at least 10s (each run spends API credits)")
+	p.check(c.ReferenceThreshold > 0 && c.ReferenceThreshold < 1,
+		"TEKEL_REFERENCE_THRESHOLD must be between 0 and 1 (0.01 = 1%)")
 	p.check(c.ShutdownTimeout > 0, "TEKEL_SHUTDOWN_TIMEOUT must be positive")
 	p.check(c.Buffer > 0, "TEKEL_BUFFER must be positive")
 	switch c.LogLevel {
