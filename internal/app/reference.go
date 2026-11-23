@@ -42,6 +42,9 @@ type ReferenceConfig struct {
 	// Interval is how often reference prices are fetched. Each run costs one
 	// API call per quote currency in use (USD, BRL…).
 	Interval time.Duration
+	// FirstDelay is the wait before the first check: long enough for the
+	// feeds to see a trade. Capped at Interval.
+	FirstDelay time.Duration
 }
 
 // ReferenceDeps are the reference check's collaborators.
@@ -88,8 +91,16 @@ func NewReferenceCheck(cfg ReferenceConfig, d ReferenceDeps) (*ReferenceCheck, e
 }
 
 // Run checks once per interval until ctx ends. A failed fetch is logged and
-// retried on the next tick; it never stops Tekel.
+// retried on the next tick; it never stops Tekel. The first check runs after
+// FirstDelay, so a fresh start shows reference prices in seconds, not after a
+// whole interval (which can be minutes on a free API plan).
 func (r *ReferenceCheck) Run(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-time.After(min(r.cfg.FirstDelay, r.cfg.Interval)):
+		r.Check(ctx)
+	}
 	t := time.NewTicker(r.cfg.Interval)
 	defer t.Stop()
 	for {

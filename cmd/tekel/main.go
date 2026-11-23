@@ -162,7 +162,7 @@ func referenceCheck(cfg config.Config, p *app.Pipeline, log *slog.Logger, m *met
 	}
 	rc := reference.DefaultConfig()
 	rc.Threshold = cfg.ReferenceThreshold
-	return app.NewReferenceCheck(app.ReferenceConfig{Monitor: rc, Interval: cfg.ReferenceInterval}, app.ReferenceDeps{
+	return app.NewReferenceCheck(app.ReferenceConfig{Monitor: rc, Interval: cfg.ReferenceInterval, FirstDelay: 15 * time.Second}, app.ReferenceDeps{
 		Source: client, Streams: p, Recorder: p, Metrics: m, Logger: log,
 	})
 }

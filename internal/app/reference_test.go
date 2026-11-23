@@ -136,3 +136,22 @@ func TestReferenceCheckRunStopsOnCancel(t *testing.T) {
 		t.Fatalf("Run = %v, want nil on cancel", err)
 	}
 }
+
+func TestReferenceCheckRunChecksSoonAfterStart(t *testing.T) {
+	src := &fakeRefSource{}
+	rc, err := NewReferenceCheck(ReferenceConfig{Monitor: reference.DefaultConfig(), Interval: time.Hour, FirstDelay: time.Millisecond},
+		ReferenceDeps{
+			Source: src, Streams: fakeLister{{Exchange: "binance", Symbol: "BTCUSDT", Kind: domain.StreamTrades, LastPrice: "1"}},
+			Recorder: &fakeRecorder{}, Metrics: &fakeRefMetrics{devs: map[string]float64{}},
+			Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	_ = rc.Run(ctx)
+	if len(src.calls) != 1 {
+		t.Fatalf("calls = %v, want exactly one check before the hour-long interval", src.calls)
+	}
+}
