@@ -52,9 +52,17 @@ Where it shows up:
 |---|---|
 | `GET /v2/cryptocurrency/quotes/latest` (`symbol`, `convert`) | latest price and `last_updated` per asset |
 
-A real call and its response (trimmed) are in
-[`internal/adapter/cmc/testdata/quotes_usd.json`](../internal/adapter/cmc/testdata/quotes_usd.json);
-the adapter's tests replay it.
+A real call, the code that makes it and its response (key redacted, trimmed to two
+coins per symbol):
+
+![Real CoinMarketCap API call from Tekel: Go code, curl equivalent and the HTTP 200 response](assets/cmc-api-call.png)
+
+The adapter's tests replay a recorded response,
+[`internal/adapter/cmc/testdata/quotes_usd.json`](../internal/adapter/cmc/testdata/quotes_usd.json).
+
+On the status page, every trade stream shows CoinMarketCap's price and the deviation:
+
+![Tekel status page with CoinMarketCap reference prices under each stream](assets/status-cmc.png)
 
 ## API credits
 
