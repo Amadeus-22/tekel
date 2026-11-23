@@ -31,7 +31,7 @@ docker run --rm -p 127.0.0.1:8080:8080 \
   -e TEKEL_BINANCE_SYMBOLS=BTCUSDT,ETHUSDT \
   -e TEKEL_KRAKEN_SYMBOLS=BTC/USD \
   -v tekel-data:/var/lib/tekel \
-  ghcr.io/amadeus-22/tekel:0.6.0
+  ghcr.io/amadeus-22/tekel:0.6.1
 ```
 
 ```sh
