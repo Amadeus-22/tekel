@@ -13,6 +13,7 @@ import (
 
 	"github.com/Amadeus-22/tekel/internal/app"
 	"github.com/Amadeus-22/tekel/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain/reference"
 )
 
 // Query limits for GET /v1/incidents.
@@ -31,6 +32,12 @@ type IncidentSource interface {
 	List(ctx context.Context, f app.IncidentFilter) ([]domain.Incident, error)
 }
 
+// ReferenceView reports the latest reference price comparison per stream;
+// app.ReferenceCheck implements it. Optional: nil when no reference source is set.
+type ReferenceView interface {
+	References() map[domain.StreamKey]reference.Result
+}
+
 // Pinger checks a dependency for /readyz.
 type Pinger interface {
 	Ping(ctx context.Context) error
@@ -41,8 +48,10 @@ type Deps struct {
 	Streams   StreamSource
 	Incidents IncidentSource
 	Ready     Pinger
-	Metrics   http.Handler
-	Logger    *slog.Logger
+	// References is optional.
+	References ReferenceView
+	Metrics    http.Handler
+	Logger     *slog.Logger
 }
 
 // NewHandler returns the routed API.
@@ -104,10 +113,24 @@ type streamJSON struct {
 	LastReceivedTime time.Time      `json:"last_received_time,omitzero"`
 	LagSeconds       float64        `json:"lag_seconds"`
 	Incidents        map[string]int `json:"incidents"`
+	Reference        *referenceJSON `json:"reference,omitempty"`
+}
+
+// referenceJSON is the latest comparison with the reference price.
+type referenceJSON struct {
+	Source    string    `json:"source"`
+	Asset     string    `json:"asset"`
+	Price     string    `json:"price"`
+	Deviation float64   `json:"deviation"`
+	CheckedAt time.Time `json:"checked_at"`
 }
 
 func (h *handler) streams(w http.ResponseWriter, _ *http.Request) {
 	all := h.d.Streams.Streams()
+	var refs map[domain.StreamKey]reference.Result
+	if h.d.References != nil {
+		refs = h.d.References.References()
+	}
 	out := make([]streamJSON, 0, len(all))
 	for _, s := range all {
 		counts := make(map[string]int, len(s.Incidents))
@@ -119,9 +142,19 @@ func (h *handler) streams(w http.ResponseWriter, _ *http.Request) {
 			LastTradeID: s.LastTradeID, LastPrice: s.LastPrice,
 			LastExchangeTime: s.LastExchangeTime, LastReceivedTime: s.LastReceivedTime,
 			LagSeconds: s.Lag.Seconds(), Incidents: counts,
+			Reference: toReferenceJSON(refs, domain.StreamKey{Exchange: s.Exchange, Symbol: s.Symbol}),
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"streams": out})
+}
+
+func toReferenceJSON(refs map[domain.StreamKey]reference.Result, key domain.StreamKey) *referenceJSON {
+	r, ok := refs[key]
+	if !ok {
+		return nil
+	}
+	return &referenceJSON{Source: "coinmarketcap", Asset: r.Asset.String(), Price: domain.FormatRat(r.Reference.Rat()),
+		Deviation: r.Deviation, CheckedAt: r.CheckedAt}
 }
 
 type incidentJSON struct {

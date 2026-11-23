@@ -20,12 +20,15 @@ const (
 	KindStaleStream IncidentKind = "stale_stream"
 	// KindDisconnect is a known gap: the connection was down for [Start, End].
 	KindDisconnect IncidentKind = "disconnect"
+	// KindPriceDeviation is a last trade too far from an external reference
+	// price (CoinMarketCap): see internal/domain/reference.
+	KindPriceDeviation IncidentKind = "price_deviation"
 )
 
 // IncidentKinds lists every kind, in documentation order.
 var IncidentKinds = []IncidentKind{
 	KindSequenceGap, KindDuplicate, KindOutOfOrder, KindClockSkew,
-	KindPriceSpike, KindStaleStream, KindDisconnect,
+	KindPriceSpike, KindStaleStream, KindDisconnect, KindPriceDeviation,
 }
 
 // ParseIncidentKind validates s against the known kinds.

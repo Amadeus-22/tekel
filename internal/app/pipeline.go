@@ -333,6 +333,11 @@ func (p *Pipeline) finish(ctx context.Context) {
 	}
 }
 
+// Record stores an incident found outside the pipeline (the reference price
+// check) the same way as its own: metric, per-stream count, log, store.
+// It is safe to call from any goroutine.
+func (p *Pipeline) Record(ctx context.Context, inc domain.Incident) { p.record(ctx, inc) }
+
 func (p *Pipeline) record(ctx context.Context, inc domain.Incident) {
 	p.metrics.IncidentRecorded(inc.Exchange, inc.Symbol, inc.Kind)
 	p.mu.Lock()

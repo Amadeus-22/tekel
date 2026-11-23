@@ -14,6 +14,7 @@ import (
 
 	"github.com/Amadeus-22/tekel/internal/app"
 	"github.com/Amadeus-22/tekel/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain/reference"
 )
 
 var t0 = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
@@ -33,6 +34,10 @@ func (f *fakeIncidents) List(_ context.Context, filter app.IncidentFilter) ([]do
 	return f.list, f.err
 }
 
+type fakeRefs map[domain.StreamKey]reference.Result
+
+func (f fakeRefs) References() map[domain.StreamKey]reference.Result { return f }
+
 type fakePinger struct{ err error }
 
 func (f fakePinger) Ping(context.Context) error { return f.err }
@@ -47,8 +52,12 @@ func newServer(t *testing.T, inc *fakeIncidents, ready error) *httptest.Server {
 		}, {Exchange: "klever", Symbol: "testnet", Kind: domain.StreamBlocks, Incidents: map[domain.IncidentKind]int{}}},
 		Incidents: inc,
 		Ready:     fakePinger{err: ready},
-		Metrics:   http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { io.WriteString(w, "metrics") }),
-		Logger:    slog.New(slog.DiscardHandler),
+		References: fakeRefs{{Exchange: "binance", Symbol: "BTCUSDT"}: {
+			Asset: reference.Asset{Base: "BTC", Convert: "USD"}, Reference: domain.MustDecimal("100"),
+			Deviation: 0.005, CheckedAt: t0,
+		}},
+		Metrics: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { io.WriteString(w, "metrics") }),
+		Logger:  slog.New(slog.DiscardHandler),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
@@ -123,7 +132,14 @@ func TestStreams(t *testing.T) {
 	if s["incidents"].(map[string]any)["duplicate"] != float64(2) {
 		t.Errorf("incident counts = %v", s["incidents"])
 	}
+	ref, ok := s["reference"].(map[string]any)
+	if !ok || ref["source"] != "coinmarketcap" || ref["asset"] != "BTC/USD" || ref["price"] != "100" || ref["deviation"] != 0.005 {
+		t.Errorf("reference = %v", s["reference"])
+	}
 	idle := streams[1].(map[string]any)
+	if _, ok := idle["reference"]; ok {
+		t.Errorf("a stream without a reference must omit it: %v", idle)
+	}
 	if idle["kind"] != "blocks" {
 		t.Errorf("block stream kind = %v", idle["kind"])
 	}

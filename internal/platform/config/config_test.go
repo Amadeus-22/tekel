@@ -160,3 +160,23 @@ func TestAlerts(t *testing.T) {
 		}
 	}
 }
+
+func TestReference(t *testing.T) {
+	c, err := Load(env(nil), sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.CMCAPIKey != "" || c.ReferenceInterval != time.Minute || c.ReferenceThreshold != 0.01 ||
+		c.CMCURL != "https://pro-api.coinmarketcap.com" {
+		t.Errorf("reference defaults = %q %v %v %q, want off, 1m, 1%%", c.CMCAPIKey, c.ReferenceInterval, c.ReferenceThreshold, c.CMCURL)
+	}
+	_, err = Load(env(map[string]string{
+		"TEKEL_REFERENCE_INTERVAL":  "5s",
+		"TEKEL_REFERENCE_THRESHOLD": "2",
+	}), sources)
+	for _, want := range []string{"TEKEL_REFERENCE_INTERVAL must be at least 10s", "TEKEL_REFERENCE_THRESHOLD must be between 0 and 1"} {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("error %v does not mention %q", err, want)
+		}
+	}
+}

@@ -57,11 +57,23 @@ function renderSources(streams, recent, now) {
         (s.last_trade_id ? " · #" + s.last_trade_id : "") +
         " · " + (s.trades || 0).toLocaleString("en-US") + " " + unit + "s since start");
       row.append(meta);
+      if (s.reference) row.append(referenceLine(s));
       card.append(row);
     }
     box.append(card);
   }
   return worst;
+}
+
+// referenceLine shows the last trade next to CoinMarketCap's price for the
+// same asset and how far apart they are.
+function referenceLine(s) {
+  const r = s.reference;
+  const pct = r.deviation * 100;
+  const line = el("div", "meta ref");
+  line.append(el("span", "", "CoinMarketCap " + r.asset + " " + Number(r.price).toLocaleString("en-US", { maximumFractionDigits: 8 }) + " · "));
+  line.append(el("span", "dev" + (Math.abs(pct) >= 1 ? " off" : ""), (pct >= 0 ? "+" : "") + pct.toFixed(3) + "%"));
+  return line;
 }
 
 // group merges runs of the same source and kind detected within a minute of

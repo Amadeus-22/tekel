@@ -20,12 +20,14 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/Amadeus-22/tekel/internal/adapter/cmc"
 	"github.com/Amadeus-22/tekel/internal/adapter/httpapi"
 	"github.com/Amadeus-22/tekel/internal/adapter/leanfs"
 	"github.com/Amadeus-22/tekel/internal/adapter/notify"
 	"github.com/Amadeus-22/tekel/internal/adapter/sqlite"
 	"github.com/Amadeus-22/tekel/internal/adapter/wsconn"
 	"github.com/Amadeus-22/tekel/internal/app"
+	"github.com/Amadeus-22/tekel/internal/domain/reference"
 	"github.com/Amadeus-22/tekel/internal/platform/config"
 	"github.com/Amadeus-22/tekel/internal/platform/logging"
 	"github.com/Amadeus-22/tekel/internal/platform/metrics"
@@ -81,12 +83,21 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	srv := httpapi.NewServer(cfg.HTTPAddr, httpapi.NewHandler(httpapi.Deps{
-		Streams: pipeline, Incidents: store, Ready: store, Metrics: m.Handler(), Logger: log,
-	}))
+	refs, err := referenceCheck(cfg, pipeline, log, m)
+	if err != nil {
+		return err
+	}
+	deps := httpapi.Deps{Streams: pipeline, Incidents: store, Ready: store, Metrics: m.Handler(), Logger: log}
+	if refs != nil {
+		deps.References = refs
+	}
+	srv := httpapi.NewServer(cfg.HTTPAddr, httpapi.NewHandler(deps))
 
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return pipeline.Run(gctx) })
+	if refs != nil {
+		g.Go(func() error { return refs.Run(gctx) })
+	}
 	if alerts != nil {
 		g.Go(func() error { return alerts.Run(gctx) })
 	}
@@ -137,6 +148,23 @@ func alerting(cfg config.Config, store app.IncidentStore, log *slog.Logger, m *m
 		return nil, nil, err
 	}
 	return n, n, nil
+}
+
+// referenceCheck compares trades with CoinMarketCap prices when an API key is
+// configured; without one it returns nil and makes no connection.
+func referenceCheck(cfg config.Config, p *app.Pipeline, log *slog.Logger, m *metrics.Metrics) (*app.ReferenceCheck, error) {
+	if cfg.CMCAPIKey == "" {
+		return nil, nil
+	}
+	client, err := cmc.New(cfg.CMCAPIKey, cfg.CMCURL)
+	if err != nil {
+		return nil, err
+	}
+	rc := reference.DefaultConfig()
+	rc.Threshold = cfg.ReferenceThreshold
+	return app.NewReferenceCheck(app.ReferenceConfig{Monitor: rc, Interval: cfg.ReferenceInterval}, app.ReferenceDeps{
+		Source: client, Streams: p, Recorder: p, Metrics: m, Logger: log,
+	})
 }
 
 // buildFeeds returns the adapters of the feeds that are on, in the order of
