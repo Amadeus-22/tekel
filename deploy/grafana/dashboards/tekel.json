@@ -6,7 +6,7 @@
   ],
   "timezone": "utc",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "refresh": "1m",
   "time": {
     "from": "now-24h",
@@ -420,6 +420,182 @@
       }
     },
     {
+      "id": 107,
+      "type": "bargauge",
+      "title": "Agreement with CoinMarketCap, by stream",
+      "description": "Share of CoinMarketCap checks in the range where the stream's last trade was within 0.1% of CoinMarketCap's price (tekel_reference_distance_ratio). Higher is better.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 14,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sort_desc(sum by (exchange, symbol) (increase(tekel_reference_distance_ratio_bucket{le=\"0.001\"}[$__range])) / sum by (exchange, symbol) (increase(tekel_reference_distance_ratio_count[$__range])))",
+          "legendFormat": "{{exchange}} {{symbol}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "min": 0,
+          "max": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.9
+              },
+              {
+                "color": "green",
+                "value": 0.98
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 108,
+      "type": "table",
+      "title": "Agreement bands, by exchange",
+      "description": "Share of CoinMarketCap checks in the range within 0.1%, 0.25% and 0.5% of CoinMarketCap's price, all symbols of the exchange together.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 13,
+        "w": 10,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (exchange) (increase(tekel_reference_distance_ratio_bucket{le=\"0.001\"}[$__range])) / sum by (exchange) (increase(tekel_reference_distance_ratio_count[$__range]))",
+          "legendFormat": "{{exchange}}",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (exchange) (increase(tekel_reference_distance_ratio_bucket{le=\"0.0025\"}[$__range])) / sum by (exchange) (increase(tekel_reference_distance_ratio_count[$__range]))",
+          "legendFormat": "{{exchange}}",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (exchange) (increase(tekel_reference_distance_ratio_bucket{le=\"0.005\"}[$__range])) / sum by (exchange) (increase(tekel_reference_distance_ratio_count[$__range]))",
+          "legendFormat": "{{exchange}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "exchange": "Exchange",
+              "Value #A": "\u2264 0.1%",
+              "Value #B": "\u2264 0.25%",
+              "Value #C": "\u2264 0.5%"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "custom": {
+            "cellOptions": {
+              "type": "color-text"
+            }
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.9
+              },
+              {
+                "color": "green",
+                "value": 0.98
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
       "id": 1,
       "type": "stat",
       "title": "Connection",
@@ -430,7 +606,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 13,
+        "y": 20,
         "w": 4,
         "h": 7
       },
@@ -513,7 +689,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 13,
+        "y": 20,
         "w": 10,
         "h": 7
       },
@@ -566,7 +742,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 13,
+        "y": 20,
         "w": 10,
         "h": 7
       },
@@ -619,7 +795,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 20,
+        "y": 27,
         "w": 24,
         "h": 7
       },
@@ -679,7 +855,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 27,
+        "y": 34,
         "w": 8,
         "h": 5
       },
@@ -732,7 +908,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 27,
+        "y": 34,
         "w": 8,
         "h": 5
       },
@@ -786,7 +962,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 27,
+        "y": 34,
         "w": 8,
         "h": 5
       },

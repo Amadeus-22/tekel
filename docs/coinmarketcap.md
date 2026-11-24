@@ -42,9 +42,32 @@ Where it shows up:
 - `GET /v1/streams`: each trade stream gets a `reference` object
   (`source`, `asset`, `price`, `deviation`, `checked_at`).
 - Grafana: "Worst deviation from CoinMarketCap", "Deviation from CoinMarketCap, by stream"
-  (with the 1% threshold) and "CoinMarketCap checks".
-- Prometheus: `tekel_reference_deviation_ratio{exchange,symbol}` and
-  `tekel_reference_fetches_total{outcome}`.
+  (with the 1% threshold), "CoinMarketCap checks" and the agreement panels below.
+- Prometheus: `tekel_reference_deviation_ratio{exchange,symbol}` (last check),
+  `tekel_reference_distance_ratio{exchange,symbol}` (histogram of the absolute distance
+  at every check) and `tekel_reference_fetches_total{outcome}`.
+
+## Agreement with CoinMarketCap
+
+A single deviation says little; the share of checks close to CoinMarketCap says how
+far a feed can be trusted. Every check adds the stream's absolute distance from
+CoinMarketCap to `tekel_reference_distance_ratio`, with bounds at 0.05%, 0.1%,
+0.25%, 0.5%, 1% and 2.5%. The dashboard divides the checks under a bound by all
+checks in the selected range:
+
+- "Agreement with CoinMarketCap, by stream": checks within 0.1%.
+- "Agreement bands, by exchange": within 0.1%, 0.25% and 0.5%.
+
+The same number in PromQL, for one day:
+
+```promql
+sum by (exchange) (increase(tekel_reference_distance_ratio_bucket{le="0.001"}[1d]))
+  / sum by (exchange) (increase(tekel_reference_distance_ratio_count[1d]))
+```
+
+CoinMarketCap's price is an aggregate of many markets and is not updated at the same
+instant as a trade, so 100% is not expected on volatile minutes; a drop compared with
+the other exchanges is what matters.
 - Alerts: `price_deviation` goes to Telegram or a webhook like any other kind.
 
 ## Endpoints used

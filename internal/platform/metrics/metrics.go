@@ -3,6 +3,7 @@
 package metrics
 
 import (
+	"math"
 	"net/http"
 	"time"
 
@@ -28,6 +29,7 @@ type Metrics struct {
 	alerts       *prometheus.CounterVec
 	refFetches   *prometheus.CounterVec
 	refDeviation *prometheus.GaugeVec
+	refDistance  *prometheus.HistogramVec
 }
 
 // New registers every metric, plus the Go runtime and process collectors, on a
@@ -80,12 +82,18 @@ func New() *Metrics {
 			Name: "tekel_reference_deviation_ratio",
 			Help: "Last trade minus reference price, divided by the reference price (0.01 = 1% above).",
 		}, []string{"exchange", "symbol"}),
+		refDistance: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name: "tekel_reference_distance_ratio",
+			Help: "Absolute distance between a stream's last trade and the reference price at each check (0.001 = 0.1%). The share of checks under a bucket bound is the stream's agreement with CoinMarketCap.",
+			// Bounds match the dashboard's agreement levels and the default 1% price_deviation threshold.
+			Buckets: []float64{.0005, .001, .0025, .005, .01, .025},
+		}, []string{"exchange", "symbol"}),
 	}
 	m.reg.MustRegister(
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		m.trades, m.incidents, m.lag, m.connected, m.decodeErrors, m.backpressure, m.lateTrades, m.sinkErrors, m.alerts,
-		m.refFetches, m.refDeviation,
+		m.refFetches, m.refDeviation, m.refDistance,
 	)
 	return m
 }
@@ -149,4 +157,5 @@ func (m *Metrics) ReferenceFetch(ok bool) {
 // ReferenceDeviation implements app.ReferenceMetrics.
 func (m *Metrics) ReferenceDeviation(exchange, symbol string, deviation float64) {
 	m.refDeviation.WithLabelValues(exchange, symbol).Set(deviation)
+	m.refDistance.WithLabelValues(exchange, symbol).Observe(math.Abs(deviation))
 }
