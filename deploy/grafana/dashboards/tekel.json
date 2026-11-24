@@ -6,7 +6,7 @@
   ],
   "timezone": "utc",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 4,
   "refresh": "1m",
   "time": {
     "from": "now-24h",
@@ -159,7 +159,7 @@
     {
       "id": 103,
       "type": "stat",
-      "title": "Worst deviation from CoinMarketCap",
+      "title": "Worst CMC deviation",
       "description": "Largest distance in the range between a stream's last trade and CoinMarketCap's price for the asset (tekel_reference_deviation_ratio). price_deviation fires at 1%.",
       "datasource": {
         "type": "prometheus",
@@ -229,7 +229,7 @@
     {
       "id": 104,
       "type": "stat",
-      "title": "CoinMarketCap checks",
+      "title": "CMC checks",
       "description": "Reference price requests to CoinMarketCap in the range, by outcome (tekel_reference_fetches_total).",
       "datasource": {
         "type": "prometheus",
@@ -291,7 +291,7 @@
     {
       "id": 105,
       "type": "timeseries",
-      "title": "Deviation from CoinMarketCap, by stream",
+      "title": "CMC deviation, by stream",
       "description": "Last trade minus CoinMarketCap's price, divided by that price (0.01 = 1% above). Dashed lines: the 1% price_deviation threshold.",
       "datasource": {
         "type": "prometheus",
@@ -370,7 +370,7 @@
     {
       "id": 106,
       "type": "bargauge",
-      "title": "Incidents in range, by stream",
+      "title": "Incidents by stream",
       "description": "Incidents per stream and kind in the selected range.",
       "datasource": {
         "type": "prometheus",
@@ -416,13 +416,15 @@
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "namePlacement": "top",
+        "sizing": "auto"
       }
     },
     {
       "id": 107,
       "type": "bargauge",
-      "title": "Agreement with CoinMarketCap, by stream",
+      "title": "CMC agreement (≤ 0.1%)",
       "description": "Share of CoinMarketCap checks in the range where the stream's last trade was within 0.1% of CoinMarketCap's price (tekel_reference_distance_ratio). Higher is better.",
       "datasource": {
         "type": "prometheus",
@@ -486,13 +488,15 @@
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "namePlacement": "top",
+        "sizing": "auto"
       }
     },
     {
       "id": 108,
       "type": "table",
-      "title": "Agreement bands, by exchange",
+      "title": "CMC agreement bands",
       "description": "Share of CoinMarketCap checks in the range within 0.1%, 0.25% and 0.5% of CoinMarketCap's price, all symbols of the exchange together.",
       "datasource": {
         "type": "prometheus",
@@ -514,7 +518,8 @@
           "expr": "sum by (exchange) (increase(tekel_reference_distance_ratio_bucket{le=\"0.001\"}[$__range])) / sum by (exchange) (increase(tekel_reference_distance_ratio_count[$__range]))",
           "legendFormat": "{{exchange}}",
           "instant": true,
-          "range": false
+          "range": false,
+          "format": "table"
         },
         {
           "refId": "B",
@@ -525,7 +530,8 @@
           "expr": "sum by (exchange) (increase(tekel_reference_distance_ratio_bucket{le=\"0.0025\"}[$__range])) / sum by (exchange) (increase(tekel_reference_distance_ratio_count[$__range]))",
           "legendFormat": "{{exchange}}",
           "instant": true,
-          "range": false
+          "range": false,
+          "format": "table"
         },
         {
           "refId": "C",
@@ -536,7 +542,8 @@
           "expr": "sum by (exchange) (increase(tekel_reference_distance_ratio_bucket{le=\"0.005\"}[$__range])) / sum by (exchange) (increase(tekel_reference_distance_ratio_count[$__range]))",
           "legendFormat": "{{exchange}}",
           "instant": true,
-          "range": false
+          "range": false,
+          "format": "table"
         }
       ],
       "transformations": [
@@ -552,9 +559,9 @@
             },
             "renameByName": {
               "exchange": "Exchange",
-              "Value #A": "\u2264 0.1%",
-              "Value #B": "\u2264 0.25%",
-              "Value #C": "\u2264 0.5%"
+              "Value #A": "≤ 0.1%",
+              "Value #B": "≤ 0.25%",
+              "Value #C": "≤ 0.5%"
             }
           }
         }
@@ -589,7 +596,26 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Exchange"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
+              },
+              {
+                "id": "unit",
+                "value": "string"
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "showHeader": true
@@ -787,7 +813,7 @@
     {
       "id": 4,
       "type": "timeseries",
-      "title": "Incidents per 5 minutes, by stream and kind",
+      "title": "Incidents per 5 min",
       "description": "New data-quality incidents in each 5-minute window, including the first incident of a stream (tekel_incidents_total). Details: GET /v1/incidents.",
       "datasource": {
         "type": "prometheus",
@@ -847,7 +873,7 @@
     {
       "id": 6,
       "type": "timeseries",
-      "title": "Backpressure (seconds blocked per second)",
+      "title": "Backpressure (s blocked / s)",
       "description": "Time feeds spent blocked because the pipeline buffer was full (ADR 0003). 0 means the validator keeps up.",
       "datasource": {
         "type": "prometheus",
@@ -954,7 +980,7 @@
     {
       "id": 8,
       "type": "timeseries",
-      "title": "Decode errors and late trades per 5 minutes",
+      "title": "Decode errors and late trades",
       "description": "Malformed messages skipped (tekel_decode_errors_total) and trades too late for their bar (tekel_late_trades_total).",
       "datasource": {
         "type": "prometheus",
