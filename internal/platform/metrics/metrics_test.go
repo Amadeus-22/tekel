@@ -66,3 +66,29 @@ func TestMetricsRecordAndServe(t *testing.T) {
 		t.Error("Registry() = nil")
 	}
 }
+
+func TestReferenceDistanceCountsChecksByBand(t *testing.T) {
+	m := New()
+	m.ReferenceDeviation("binance", "BTCUSDT", 0.0004) // within 0.05%
+	m.ReferenceDeviation("binance", "BTCUSDT", -0.002) // below the price: distance 0.2%
+	m.ReferenceDeviation("binance", "BTCUSDT", 0.03)   // beyond every bound
+
+	if got := testutil.ToFloat64(m.refDeviation.WithLabelValues("binance", "BTCUSDT")); got != 0.03 {
+		t.Errorf("deviation gauge = %v, want the last check, 0.03", got)
+	}
+	rec := httptest.NewRecorder()
+	m.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/metrics", nil))
+	body, _ := io.ReadAll(rec.Body)
+	for _, line := range []string{
+		`tekel_reference_distance_ratio_bucket{exchange="binance",symbol="BTCUSDT",le="0.0005"} 1`,
+		`tekel_reference_distance_ratio_bucket{exchange="binance",symbol="BTCUSDT",le="0.001"} 1`,
+		`tekel_reference_distance_ratio_bucket{exchange="binance",symbol="BTCUSDT",le="0.0025"} 2`,
+		`tekel_reference_distance_ratio_bucket{exchange="binance",symbol="BTCUSDT",le="0.025"} 2`,
+		`tekel_reference_distance_ratio_bucket{exchange="binance",symbol="BTCUSDT",le="+Inf"} 3`,
+		`tekel_reference_distance_ratio_count{exchange="binance",symbol="BTCUSDT"} 3`,
+	} {
+		if !strings.Contains(string(body), line) {
+			t.Errorf("/metrics lacks %s", line)
+		}
+	}
+}
