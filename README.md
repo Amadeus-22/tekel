@@ -6,6 +6,8 @@
 
 <p align="center">Tekel finds the trades and blocks your market data silently lost.</p>
 
+<p align="center"><b><a href="https://37-27-35-19.sslip.io">Live dashboard</a></b>: Binance, Kraken and KleverChain, checked against CoinMarketCap, running now.</p>
+
 <p align="center">
   <a href="https://github.com/Amadeus-22/tekel/actions/workflows/ci.yml"><img src="https://github.com/Amadeus-22/tekel/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/Amadeus-22/tekel/releases"><img src="https://img.shields.io/github/v/release/Amadeus-22/tekel" alt="Release"></a>
@@ -21,6 +23,39 @@ When your recorder loses some, you usually find out weeks later, when a backtest
 disagrees with live trading. Tekel watches the numbers while they arrive and tells
 two cases apart: a **known gap** (you were disconnected; the window is on record)
 and a **silent gap** (the sequence jumped while connected: the feed itself lost data).
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph sources [Public feeds, no API key]
+    B[Binance WS]
+    K[Kraken WS]
+    MB[Mercado Bitcoin WS]
+    KN[Klever node WS]
+  end
+  B & K & MB --> P[app.Pipeline]
+  KN -- blocks --> P
+  P --> V[domain/quality checks]
+  V --> I[(SQLite incidents)]
+  V --> N[Alerts: Telegram, webhook]
+  P -- trades only --> A[minute bars] --> L[LEAN zip files]
+  CMC[CoinMarketCap API] --> R[app.ReferenceCheck]
+  P -- last prices --> R
+  R -- price_deviation --> I
+  H[HTTP API + /metrics] --> I
+  H --> P
+  M[Prometheus] -. scrapes .-> H
+  M --> G[Grafana dashboard]
+```
+
+Each feed is an adapter over one shared reconnect loop; a single consumer owns
+all validation state, and a full buffer blocks feeds instead of dropping data
+([ADR 0003](docs/adr/0003-backpressure-instead-of-dropping.md)). Every few minutes the
+reference check compares each trade stream with CoinMarketCap
+([docs/coinmarketcap.md](docs/coinmarketcap.md)). The layers are `domain` ← `app` ←
+`adapter` ← `cmd`; packages, failure modes and every design decision:
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Try it in one minute
 
@@ -165,28 +200,6 @@ Errors are `{"error":{"code":"snake_case","message":"..."}}`. Metrics:
 - Listens on 127.0.0.1 by default.
 - One static Go binary; the image is distroless (no shell) and runs as `nonroot`,
   about 25 MB.
-
-## Architecture
-
-```mermaid
-flowchart LR
-  B[Binance WS] --> P[app.Pipeline]
-  K[Kraken WS] --> P
-  MB[Mercado Bitcoin WS] --> P
-  KN[Klever node WS] -- blocks --> P
-  P --> V[domain/quality checks]
-  V --> I[(SQLite incidents)]
-  P -- trades only --> A[minute bars]
-  A --> L[LEAN zip files]
-  H[HTTP API + /metrics] --> I
-  H --> P
-  M[Prometheus + Grafana, optional] -. scrapes .-> H
-```
-
-Each feed is an adapter over one shared reconnect loop; a single consumer owns
-all validation state, and a full buffer blocks feeds instead of dropping data
-([ADR 0003](docs/adr/0003-backpressure-instead-of-dropping.md)). Packages, failure
-modes and every design decision: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Contributing
 
