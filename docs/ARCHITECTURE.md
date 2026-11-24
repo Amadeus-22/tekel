@@ -87,6 +87,7 @@ flowchart LR
 | `internal/app` | `Pipeline`: fan-in of feeds, runs validators, routes trades to sinks (blocks only to incidents), serves stream status; ports `Feed` (declares its `StreamKind`), `IncidentStore`, `BarSink`, `Metrics`. `Audit`: runs the audit over a `LeanSource`, builds `AuditReport`. `ReferenceCheck`: on a timer, reads the pipeline's streams, fetches reference quotes (port `ReferenceSource`, one call per currency) and records `price_deviation` through `Pipeline.Record` |
 | `internal/adapter/binance` | combined-stream `@trade` client, message decoding |
 | `internal/adapter/kraken` | WS v2 client, `trade` subscribe, decoding, rejects bad symbols as permanent errors |
+| `internal/adapter/coinbase` | Exchange feed client, `matches` + `heartbeat` subscribe, decoding (maker side → taker side), rejects unknown products as permanent errors |
 | `internal/adapter/mercadobitcoin` | WS client, one `trade` subscribe per market, `{"type":"ping"}` keepalive, decoding, server errors are permanent |
 | `internal/adapter/klever` | KleverChain block feed: node `/subscribe` WebSocket, `blocks` subscription, decoding, chain ID check; node errors and a wrong chain are permanent |
 | `internal/adapter/wsconn` | shared reconnect loop with jittered backoff (cap 30s), ping/pong or application ping, handshake header, read deadline; `Malformed` (counts every undecodable message, logs one sample per minute); adapter setup helpers `CheckSymbols`, `Config.CapReadTimeout`, `Config.Bind` |

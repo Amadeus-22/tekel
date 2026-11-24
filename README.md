@@ -6,7 +6,7 @@
 
 <p align="center">Tekel finds the trades and blocks your market data silently lost.</p>
 
-<p align="center"><b><a href="https://37-27-35-19.sslip.io">Live dashboard</a></b>: Binance, Kraken and KleverChain, checked against CoinMarketCap, running now.</p>
+<p align="center"><b><a href="https://37-27-35-19.sslip.io">Live dashboard</a></b>: Binance, Kraken, Coinbase and KleverChain, checked against CoinMarketCap, running now.</p>
 
 <p align="center">
   <a href="https://github.com/Amadeus-22/tekel/actions/workflows/ci.yml"><img src="https://github.com/Amadeus-22/tekel/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
@@ -31,10 +31,11 @@ flowchart LR
   subgraph sources [Public feeds, no API key]
     B[Binance WS]
     K[Kraken WS]
+    CB[Coinbase WS]
     MB[Mercado Bitcoin WS]
     KN[Klever node WS]
   end
-  B & K & MB --> P[app.Pipeline]
+  B & K & CB & MB --> P[app.Pipeline]
   KN -- blocks --> P
   P --> V[domain/quality checks]
   V --> I[(SQLite incidents)]
@@ -110,6 +111,7 @@ over LEAN data you already have, with an exit code for CI: see [docs/audit.md](d
 |---|---|---|
 | Binance spot | `<symbol>@trade` | on by default (`BTCUSDT,ETHUSDT`) |
 | Kraken | WebSocket v2 `trade` | on by default (`BTC/USD,ETH/USD`) |
+| Coinbase | Exchange feed `matches` | on by default (`BTC-USD,ETH-USD`); Coinbase documents that matches can be dropped ([docs/coinbase.md](docs/coinbase.md)) |
 | Mercado Bitcoin | WebSocket `trade` | Brazil, BRL markets; off by default; **endpoints answer 403 to automated clients since 2026-11** and LEAN needs a custom market: [docs/mercadobitcoin.md](docs/mercadobitcoin.md) |
 | KleverChain | node `/subscribe` `blocks` | public mainnet or testnet node, or your own; block nonces instead of trade IDs: [docs/klever.md](docs/klever.md) |
 
@@ -140,6 +142,7 @@ Durations use Go syntax (`500ms`, `30s`, `5m`).
 |---|---|---|
 | `TEKEL_BINANCE_SYMBOLS` | `BTCUSDT,ETHUSDT` | Binance symbols; empty disables Binance |
 | `TEKEL_KRAKEN_SYMBOLS` | `BTC/USD,ETH/USD` | Kraken symbols; empty disables Kraken |
+| `TEKEL_COINBASE_SYMBOLS` | `BTC-USD,ETH-USD` | Coinbase product IDs; empty disables Coinbase |
 | `TEKEL_MERCADOBITCOIN_SYMBOLS` | off | e.g. `BTC-BRL,USDT-BRL` |
 | `TEKEL_KLEVER_NETWORK` | off | `mainnet` or `testnet`; `TEKEL_KLEVER_URL` overrides the public node |
 | `TEKEL_STALE_AFTER` | `60s` | `stale_stream` threshold |

@@ -44,7 +44,7 @@ func TestPipelineConfigMapsEveryField(t *testing.T) {
 
 func TestBuildFeedsHonoursDisabledExchange(t *testing.T) {
 	cfg, err := config.Load(func(k string) (string, bool) {
-		if k == "TEKEL_KRAKEN_SYMBOLS" {
+		if k == "TEKEL_KRAKEN_SYMBOLS" || k == "TEKEL_COINBASE_SYMBOLS" {
 			return "", true
 		}
 		return "", false
@@ -107,7 +107,7 @@ func TestBuildFeedsOrder(t *testing.T) {
 	for _, f := range feeds {
 		got = append(got, f.Exchange())
 	}
-	if want := "binance kraken mercadobitcoin klever"; strings.Join(got, " ") != want {
+	if want := "binance kraken coinbase mercadobitcoin klever"; strings.Join(got, " ") != want {
 		t.Errorf("feeds = %v, want %s", got, want)
 	}
 }
@@ -154,7 +154,7 @@ func TestSourcesTable(t *testing.T) {
 			on = append(on, f.Name+"="+strings.Join(f.Symbols, ","))
 		}
 	}
-	if want := "binance=BTCUSDT,ETHUSDT kraken=BTC/USD,ETH/USD"; strings.Join(on, " ") != want {
+	if want := "binance=BTCUSDT,ETHUSDT kraken=BTC/USD,ETH/USD coinbase=BTC-USD,ETH-USD"; strings.Join(on, " ") != want {
 		t.Errorf("feeds on by default = %v, want %s", on, want)
 	}
 }

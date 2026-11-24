@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/Amadeus-22/tekel/internal/adapter/binance"
+	"github.com/Amadeus-22/tekel/internal/adapter/coinbase"
 	"github.com/Amadeus-22/tekel/internal/adapter/klever"
 	"github.com/Amadeus-22/tekel/internal/adapter/kraken"
 	"github.com/Amadeus-22/tekel/internal/adapter/mercadobitcoin"
@@ -38,6 +39,13 @@ var sources = []source{
 		SymbolsKey: "TEKEL_KRAKEN_SYMBOLS", SymbolsDefault: "BTC/USD,ETH/USD",
 	}, func(f config.Feed, conn wsconn.Config, log *slog.Logger, decodeErrors func()) (app.Feed, error) {
 		return kraken.New(kraken.Config{URL: f.URL, Symbols: f.Symbols, Conn: conn, Logger: log, DecodeErrors: decodeErrors})
+	}},
+	{config.Source{
+		Name:   coinbase.Exchange,
+		URLKey: "TEKEL_COINBASE_URL", URLDefault: coinbase.DefaultURL,
+		SymbolsKey: "TEKEL_COINBASE_SYMBOLS", SymbolsDefault: "BTC-USD,ETH-USD",
+	}, func(f config.Feed, conn wsconn.Config, log *slog.Logger, decodeErrors func()) (app.Feed, error) {
+		return coinbase.New(coinbase.Config{URL: f.URL, Symbols: f.Symbols, Conn: conn, Logger: log, DecodeErrors: decodeErrors})
 	}},
 	// Off unless symbols are set: LEAN needs a custom market to read its
 	// output (docs/adr/0006), and the endpoints answer 403 to automated
