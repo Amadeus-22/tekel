@@ -6,7 +6,7 @@
   ],
   "timezone": "utc",
   "schemaVersion": 39,
-  "version": 5,
+  "version": 6,
   "refresh": "1m",
   "time": {
     "from": "now-24h",
@@ -328,7 +328,7 @@
         "x": 0,
         "y": 8,
         "w": 16,
-        "h": 8
+        "h": 9
       },
       "targets": [
         {
@@ -407,7 +407,7 @@
         "x": 16,
         "y": 8,
         "w": 8,
-        "h": 8
+        "h": 9
       },
       "targets": [
         {
@@ -435,7 +435,7 @@
       },
       "options": {
         "orientation": "horizontal",
-        "displayMode": "gradient",
+        "displayMode": "basic",
         "showUnfilled": true,
         "reduceOptions": {
           "calcs": [
@@ -445,7 +445,12 @@
           "values": false
         },
         "namePlacement": "top",
-        "sizing": "auto"
+        "sizing": "auto",
+        "text": {
+          "titleSize": 12,
+          "valueSize": 12
+        },
+        "valueMode": "color"
       }
     },
     {
@@ -461,7 +466,7 @@
         "x": 0,
         "y": 16,
         "w": 14,
-        "h": 7
+        "h": 9
       },
       "targets": [
         {
@@ -507,7 +512,7 @@
       },
       "options": {
         "orientation": "horizontal",
-        "displayMode": "gradient",
+        "displayMode": "basic",
         "showUnfilled": true,
         "reduceOptions": {
           "calcs": [
@@ -517,7 +522,12 @@
           "values": false
         },
         "namePlacement": "top",
-        "sizing": "auto"
+        "sizing": "auto",
+        "text": {
+          "titleSize": 12,
+          "valueSize": 12
+        },
+        "valueMode": "color"
       }
     },
     {
@@ -533,7 +543,7 @@
         "x": 14,
         "y": 16,
         "w": 10,
-        "h": 7
+        "h": 9
       },
       "targets": [
         {

@@ -129,8 +129,8 @@ func (r *ReferenceCheck) Check(ctx context.Context) {
 		if s.Kind != domain.StreamTrades || s.LastPrice == "" {
 			continue
 		}
-		asset, ok := reference.AssetFor(s.Symbol)
-		if !ok {
+		assets := reference.AssetsFor(s.Symbol)
+		if len(assets) == 0 {
 			continue
 		}
 		price, err := domain.ParseDecimal(s.LastPrice)
@@ -140,8 +140,10 @@ func (r *ReferenceCheck) Check(ctx context.Context) {
 		obs = append(obs, reference.Observation{
 			Key: domain.StreamKey{Exchange: s.Exchange, Symbol: s.Symbol}, Price: price, ReceivedAt: s.LastReceivedTime,
 		})
-		if !slices.Contains(need[asset.Convert], asset.Base) {
-			need[asset.Convert] = append(need[asset.Convert], asset.Base)
+		for _, a := range assets {
+			if !slices.Contains(need[a.Convert], a.Base) {
+				need[a.Convert] = append(need[a.Convert], a.Base)
+			}
 		}
 	}
 	quotes := map[reference.Asset]reference.Quote{}

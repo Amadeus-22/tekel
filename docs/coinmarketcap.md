@@ -24,11 +24,15 @@ header, never in a URL, a log line or an error. Do not commit it.
 Every `TEKEL_REFERENCE_INTERVAL` (default 60s):
 
 1. Reads the last trade of every trade stream (block streams are skipped).
-2. Maps each exchange symbol to an asset and a currency: `BTCUSDT` and `BTC/USD`
-   become BTC in USD (dollar stablecoins are compared with USD), `BTC-BRL` is
-   BTC in BRL.
-3. Fetches all the assets of one currency in **one request**:
-   `GET /v2/cryptocurrency/quotes/latest?symbol=BTC,ETH,SOL&convert=USD`.
+2. Maps each exchange symbol to the prices it needs: `BTC/USD` needs BTC in USD,
+   `BTC-BRL` BTC in BRL, and a dollar-stablecoin pair such as `BTCUSDT` needs BTC
+   **and USDT** in USD. The trade is compared with BTC priced in USDT
+   (BTC/USD ÷ USDT/USD): USDT trades near, not at, one dollar, and against USD
+   alone every Binance pair read about 0.1% high on the hosted instance while
+   Coinbase and Kraken sat near zero.
+3. Fetches all the assets of one currency in **one request**, the stablecoins
+   included, so the cross rate costs no extra credit:
+   `GET /v2/cryptocurrency/quotes/latest?symbol=BTC,ETH,SOL,USDT&convert=USD`.
 4. Computes `(last trade − reference) / reference` exactly (`math/big`) and
    records `price_deviation` once when it reaches the threshold. The stream must
    fall back under half the threshold before a new incident can be raised, so a
