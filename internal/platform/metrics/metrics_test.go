@@ -11,6 +11,7 @@ import (
 
 	"github.com/Amadeus-22/tekel/internal/app"
 	"github.com/Amadeus-22/tekel/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain/reference"
 )
 
 var _ app.Metrics = (*Metrics)(nil)
@@ -89,6 +90,16 @@ func TestReferenceDistanceCountsChecksByBand(t *testing.T) {
 	} {
 		if !strings.Contains(string(body), line) {
 			t.Errorf("/metrics lacks %s", line)
+		}
+	}
+}
+
+func TestReferenceUsageSetsCreditGauges(t *testing.T) {
+	m := New()
+	m.ReferenceUsage(reference.Usage{UsedToday: 3, UsedMonth: 40, LeftMonth: 9960})
+	for kind, want := range map[string]float64{"used_today": 3, "used_month": 40, "left_month": 9960} {
+		if got := testutil.ToFloat64(m.refCredits.WithLabelValues(kind)); got != want {
+			t.Errorf("credits %s = %v, want %v", kind, got, want)
 		}
 	}
 }

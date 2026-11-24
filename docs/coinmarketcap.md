@@ -45,7 +45,8 @@ Where it shows up:
   (with the 1% threshold), "CoinMarketCap checks" and the agreement panels below.
 - Prometheus: `tekel_reference_deviation_ratio{exchange,symbol}` (last check),
   `tekel_reference_distance_ratio{exchange,symbol}` (histogram of the absolute distance
-  at every check) and `tekel_reference_fetches_total{outcome}`.
+  at every check), `tekel_reference_fetches_total{outcome}` and
+  `tekel_reference_credits{kind}` (`used_today`, `used_month`, `left_month`).
 
 ## Agreement with CoinMarketCap
 
@@ -75,6 +76,7 @@ the other exchanges is what matters.
 | Endpoint | Why |
 |---|---|
 | `GET /v2/cryptocurrency/quotes/latest` (`symbol`, `convert`) | latest price and `last_updated` per asset |
+| `GET /v1/key/info` | the key's credits used today and this month, and what is left; costs no credits |
 
 A real call, the code that makes it and its response (key redacted, trimmed to two
 coins per symbol):
@@ -97,6 +99,11 @@ on), one credit per call for up to 100 symbols.
 |---|---|---|---|
 | Basic (free) | 15,000 | 5m (8,640 a month) | 10m |
 | Startup | 450,000 | 10s | 15s |
+
+After every run Tekel also reads `/v1/key/info`, which costs nothing, and exports the
+key's usage as `tekel_reference_credits`; the dashboard's "CMC checks and credits"
+panel shows what is used and left this month, so you see a plan running out before
+CoinMarketCap starts refusing requests.
 
 ## What the API made easy, and where it got in the way
 

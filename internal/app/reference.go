@@ -20,6 +20,12 @@ type ReferenceSource interface {
 	Quotes(ctx context.Context, convert string, bases []string) (map[string]reference.Quote, error)
 }
 
+// ReferenceUsageSource is implemented by a ReferenceSource that can report its
+// own API credit usage. The check reads it on the same timer, when available.
+type ReferenceUsageSource interface {
+	Usage(ctx context.Context) (reference.Usage, error)
+}
+
 // StreamLister reports live stream state; Pipeline implements it.
 type StreamLister interface {
 	Streams() []StreamStatus
@@ -34,6 +40,7 @@ type IncidentRecorder interface {
 type ReferenceMetrics interface {
 	ReferenceFetch(ok bool)
 	ReferenceDeviation(exchange, symbol string, deviation float64)
+	ReferenceUsage(u reference.Usage)
 }
 
 // ReferenceConfig tunes the reference check.
@@ -162,6 +169,13 @@ func (r *ReferenceCheck) Check(ctx context.Context) {
 	}
 	for _, inc := range incidents {
 		r.d.Recorder.Record(ctx, inc)
+	}
+	if us, ok := r.d.Source.(ReferenceUsageSource); ok {
+		if u, err := us.Usage(ctx); err != nil {
+			r.d.Logger.Warn("reference usage", "error", err)
+		} else {
+			r.d.Metrics.ReferenceUsage(u)
+		}
 	}
 }
 

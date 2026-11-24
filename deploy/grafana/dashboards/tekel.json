@@ -6,7 +6,7 @@
   ],
   "timezone": "utc",
   "schemaVersion": 39,
-  "version": 4,
+  "version": 5,
   "refresh": "1m",
   "time": {
     "from": "now-24h",
@@ -16,6 +16,22 @@
   "graphTooltip": 1,
   "description": "Live data quality of public crypto feeds (Binance, Kraken, KleverChain), checked against CoinMarketCap. Source: github.com/Amadeus-22/tekel",
   "panels": [
+    {
+      "id": 100,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Tekel** checks live trade and block streams from Binance, Kraken, Coinbase and KleverChain for lost, duplicated, late and stale data, and compares every price with CoinMarketCap. Red lines on the charts mark gaps and stale streams. Free and open source: [github.com/Amadeus-22/tekel](https://github.com/Amadeus-22/tekel)"
+      },
+      "transparent": true
+    },
     {
       "id": 101,
       "type": "stat",
@@ -27,7 +43,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 3,
         "w": 6,
         "h": 5
       },
@@ -97,7 +113,7 @@
       },
       "gridPos": {
         "x": 6,
-        "y": 0,
+        "y": 3,
         "w": 8,
         "h": 5
       },
@@ -167,7 +183,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 0,
+        "y": 3,
         "w": 6,
         "h": 5
       },
@@ -229,15 +245,15 @@
     {
       "id": 104,
       "type": "stat",
-      "title": "CMC checks",
-      "description": "Reference price requests to CoinMarketCap in the range, by outcome (tekel_reference_fetches_total).",
+      "title": "CMC checks and credits",
+      "description": "Reference price requests to CoinMarketCap in the range, by outcome, and the API key's credits this month as CoinMarketCap reports them (/v1/key/info, which costs no credits).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
         "x": 20,
-        "y": 0,
+        "y": 3,
         "w": 4,
         "h": 5
       },
@@ -249,7 +265,18 @@
             "uid": "prometheus"
           },
           "expr": "sum by (outcome) (increase(tekel_reference_fetches_total[$__range]))",
-          "legendFormat": "{{outcome}}",
+          "legendFormat": "checks {{outcome}}",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (kind) (tekel_reference_credits{kind=~\"used_month|left_month\"})",
+          "legendFormat": "{{kind}}",
           "instant": true,
           "range": false
         }
@@ -285,7 +312,7 @@
         "graphMode": "none",
         "textMode": "value_and_name",
         "justifyMode": "auto",
-        "orientation": "auto"
+        "orientation": "horizontal"
       }
     },
     {
@@ -299,7 +326,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 5,
+        "y": 8,
         "w": 16,
         "h": 8
       },
@@ -378,7 +405,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 5,
+        "y": 8,
         "w": 8,
         "h": 8
       },
@@ -432,7 +459,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 13,
+        "y": 16,
         "w": 14,
         "h": 7
       },
@@ -504,7 +531,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 13,
+        "y": 16,
         "w": 10,
         "h": 7
       },
@@ -632,7 +659,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 20,
+        "y": 23,
         "w": 4,
         "h": 7
       },
@@ -715,7 +742,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 20,
+        "y": 23,
         "w": 10,
         "h": 7
       },
@@ -768,7 +795,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 20,
+        "y": 23,
         "w": 10,
         "h": 7
       },
@@ -821,7 +848,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 27,
+        "y": 30,
         "w": 24,
         "h": 7
       },
@@ -881,7 +908,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 34,
+        "y": 37,
         "w": 8,
         "h": 5
       },
@@ -934,7 +961,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 34,
+        "y": 37,
         "w": 8,
         "h": 5
       },
@@ -988,7 +1015,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 34,
+        "y": 37,
         "w": 8,
         "h": 5
       },
@@ -1045,6 +1072,52 @@
     "list": []
   },
   "annotations": {
-    "list": []
+    "list": [
+      {
+        "name": "Gaps and stale streams",
+        "enable": true,
+        "iconColor": "red",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "expr": "sum by (exchange, symbol, kind) (changes(tekel_incidents_total{kind=~\"sequence_gap|stale_stream\"}[2m])) > 0",
+        "step": "2m",
+        "titleFormat": "{{kind}}",
+        "textFormat": "{{exchange}} {{symbol}}",
+        "tagKeys": "exchange,kind",
+        "useValueForTime": false
+      },
+      {
+        "name": "Price deviation (CMC)",
+        "enable": true,
+        "iconColor": "purple",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "expr": "sum by (exchange, symbol) (changes(tekel_incidents_total{kind=\"price_deviation\"}[5m])) > 0",
+        "step": "5m",
+        "titleFormat": "price_deviation",
+        "textFormat": "{{exchange}} {{symbol}}",
+        "tagKeys": "exchange",
+        "useValueForTime": false
+      },
+      {
+        "name": "Disconnects",
+        "enable": false,
+        "iconColor": "orange",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "expr": "sum by (exchange, symbol) (changes(tekel_incidents_total{kind=\"disconnect\"}[2m])) > 0",
+        "step": "2m",
+        "titleFormat": "disconnect",
+        "textFormat": "{{exchange}} {{symbol}}",
+        "tagKeys": "exchange",
+        "useValueForTime": false
+      }
+    ]
   }
 }

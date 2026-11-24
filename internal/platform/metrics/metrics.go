@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/Amadeus-22/tekel/internal/domain"
+	"github.com/Amadeus-22/tekel/internal/domain/reference"
 )
 
 // Metrics holds every Tekel metric. All methods are safe for concurrent use.
@@ -30,6 +31,7 @@ type Metrics struct {
 	refFetches   *prometheus.CounterVec
 	refDeviation *prometheus.GaugeVec
 	refDistance  *prometheus.HistogramVec
+	refCredits   *prometheus.GaugeVec
 }
 
 // New registers every metric, plus the Go runtime and process collectors, on a
@@ -88,12 +90,16 @@ func New() *Metrics {
 			// Bounds match the dashboard's agreement levels and the default 1% price_deviation threshold.
 			Buckets: []float64{.0005, .001, .0025, .005, .01, .025},
 		}, []string{"exchange", "symbol"}),
+		refCredits: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "tekel_reference_credits",
+			Help: "API credits of the reference provider's key: used_today, used_month and left_month, as the provider reports them.",
+		}, []string{"kind"}),
 	}
 	m.reg.MustRegister(
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		m.trades, m.incidents, m.lag, m.connected, m.decodeErrors, m.backpressure, m.lateTrades, m.sinkErrors, m.alerts,
-		m.refFetches, m.refDeviation, m.refDistance,
+		m.refFetches, m.refDeviation, m.refDistance, m.refCredits,
 	)
 	return m
 }
@@ -158,4 +164,11 @@ func (m *Metrics) ReferenceFetch(ok bool) {
 func (m *Metrics) ReferenceDeviation(exchange, symbol string, deviation float64) {
 	m.refDeviation.WithLabelValues(exchange, symbol).Set(deviation)
 	m.refDistance.WithLabelValues(exchange, symbol).Observe(math.Abs(deviation))
+}
+
+// ReferenceUsage implements app.ReferenceMetrics.
+func (m *Metrics) ReferenceUsage(u reference.Usage) {
+	m.refCredits.WithLabelValues("used_today").Set(float64(u.UsedToday))
+	m.refCredits.WithLabelValues("used_month").Set(float64(u.UsedMonth))
+	m.refCredits.WithLabelValues("left_month").Set(float64(u.LeftMonth))
 }
