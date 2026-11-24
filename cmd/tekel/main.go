@@ -204,5 +204,6 @@ func pipelineConfig(cfg config.Config) app.Config {
 	pc.Buffer = cfg.Buffer
 	pc.BarGrace = cfg.BarGrace
 	pc.StaleAfter = cfg.StaleAfterOverrides
+	pc.ClockSkew = cfg.ClockSkewOverrides
 	return pc
 }

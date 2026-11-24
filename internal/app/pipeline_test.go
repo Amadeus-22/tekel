@@ -546,3 +546,49 @@ func TestNewPipelineRejectsUnknownStaleOverride(t *testing.T) {
 		t.Errorf("override for a configured stream: %v", err)
 	}
 }
+
+func TestPipelineAppliesClockSkewOverride(t *testing.T) {
+	late := func(id int64) Event { // received 3 s after the exchange time
+		ev := tradeEv(id, 0, "1")
+		ev.Trade.ReceivedTime = ev.Trade.ExchangeTime.Add(3 * time.Second)
+		return ev
+	}
+	for _, tt := range []struct {
+		name     string
+		override map[domain.StreamKey]time.Duration
+		want     int
+	}{
+		{"default 2s flags it", nil, 1},
+		{"override 5s for the stream allows it", map[domain.StreamKey]time.Duration{{Exchange: ex, Symbol: sym}: 5 * time.Second}, 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newFakeFeed(ex, []string{sym}, connEv(EventConnected, 0), late(1))
+			cfg := testConfig()
+			cfg.ClockSkew = tt.override
+			h := newHarness(t, cfg, f)
+			runUntilEmitted(t, h, f)
+			n := 0
+			for _, k := range h.store.kinds() {
+				if k == domain.KindClockSkew {
+					n++
+				}
+			}
+			if n != tt.want {
+				t.Errorf("clock_skew incidents = %d, want %d (all: %v)", n, tt.want, h.store.kinds())
+			}
+		})
+	}
+}
+
+func TestNewPipelineRejectsUnknownClockSkewOverride(t *testing.T) {
+	cfg := testConfig()
+	cfg.ClockSkew = map[domain.StreamKey]time.Duration{{Exchange: "klever", Symbol: "mainnet"}: 5 * time.Second}
+	_, err := NewPipeline(cfg, Deps{
+		Feeds: []Feed{newFakeFeed(ex, []string{sym})}, Incidents: &fakeStore{}, Bars: &fakeSink{},
+		Metrics: newFakeMetrics(), Logger: slog.New(slog.DiscardHandler),
+	})
+	want := "new pipeline: clock skew override for klever:mainnet matches no configured stream"
+	if err == nil || err.Error() != want {
+		t.Fatalf("NewPipeline() = %v, want %q", err, want)
+	}
+}

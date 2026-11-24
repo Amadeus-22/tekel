@@ -19,6 +19,7 @@ func TestPipelineConfigMapsEveryField(t *testing.T) {
 		v, ok := map[string]string{
 			"TEKEL_SPIKE_WINDOW":          "11",
 			"TEKEL_STALE_AFTER_OVERRIDES": "kraken:ETH/USD=5m",
+			"TEKEL_CLOCK_SKEW_OVERRIDES":  "kraken:ETH/USD=4s",
 			"TEKEL_BUFFER":                "8",
 		}[k]
 		return v, ok
@@ -35,6 +36,9 @@ func TestPipelineConfigMapsEveryField(t *testing.T) {
 	}
 	if pc.StaleAfter[domain.StreamKey{Exchange: "kraken", Symbol: "ETH/USD"}] != 5*time.Minute {
 		t.Errorf("stale overrides = %v", pc.StaleAfter)
+	}
+	if pc.ClockSkew[domain.StreamKey{Exchange: "kraken", Symbol: "ETH/USD"}] != 4*time.Second {
+		t.Errorf("clock skew overrides = %v", pc.ClockSkew)
 	}
 }
 
@@ -120,7 +124,10 @@ func TestConfigDefaultsMatchPackageDefaults(t *testing.T) {
 	if len(pc.StaleAfter) != 0 {
 		t.Errorf("default stale overrides = %v", pc.StaleAfter)
 	}
-	pc.StaleAfter = nil
+	if len(pc.ClockSkew) != 0 {
+		t.Errorf("default clock skew overrides = %v", pc.ClockSkew)
+	}
+	pc.StaleAfter, pc.ClockSkew = nil, nil
 	if want := app.DefaultConfig(); !reflect.DeepEqual(pc, want) {
 		t.Errorf("pipeline config from defaults =\n%+v\nwant app.DefaultConfig() =\n%+v", pc, want)
 	}

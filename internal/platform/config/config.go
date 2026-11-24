@@ -27,7 +27,9 @@ type Config struct {
 	// an entry with no symbols is off.
 	Feeds []Feed
 
-	ClockSkew           time.Duration
+	ClockSkew time.Duration
+	// ClockSkewOverrides holds per-stream clock-skew thresholds.
+	ClockSkewOverrides  map[domain.StreamKey]time.Duration
 	OutOfOrderTolerance time.Duration
 	StaleAfter          time.Duration
 	// StaleAfterOverrides holds per-stream stale thresholds.
@@ -110,6 +112,7 @@ func Load(lookup Lookup, sources []Source) (Config, error) {
 		ShutdownTimeout: p.duration("TEKEL_SHUTDOWN_TIMEOUT", 10*time.Second),
 
 		ClockSkew:           p.duration("TEKEL_CLOCK_SKEW", 2*time.Second),
+		ClockSkewOverrides:  p.overrides("TEKEL_CLOCK_SKEW_OVERRIDES"),
 		OutOfOrderTolerance: p.duration("TEKEL_OUT_OF_ORDER_TOLERANCE", 0),
 		StaleAfter:          p.duration("TEKEL_STALE_AFTER", 60*time.Second),
 		StaleAfterOverrides: p.overrides("TEKEL_STALE_AFTER_OVERRIDES"),

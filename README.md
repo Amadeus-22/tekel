@@ -145,6 +145,7 @@ Durations use Go syntax (`500ms`, `30s`, `5m`).
 | `TEKEL_STALE_AFTER` | `60s` | `stale_stream` threshold |
 | `TEKEL_STALE_AFTER_OVERRIDES` | none | per stream, e.g. `kraken:ETH/USD=3m,klever:testnet=20s`; an override that matches no enabled stream stops startup |
 | `TEKEL_CLOCK_SKEW` | `2s` | `clock_skew` threshold |
+| `TEKEL_CLOCK_SKEW_OVERRIDES` | none | per stream, e.g. `klever:mainnet=4s` ([why](docs/klever.md#clock-skew)); same rules as the stale overrides |
 | `TEKEL_HTTP_ADDR` | `127.0.0.1:8080` | API and metrics address (the image sets `:8080`) |
 | `TEKEL_DATA_DIR` | `./data` | LEAN data folder |
 | `TEKEL_DB_PATH` | `./tekel.db` | SQLite incident database |
