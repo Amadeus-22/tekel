@@ -65,6 +65,23 @@ func AssetFor(symbol string) (Asset, bool) {
 	return Asset{Base: base, Convert: Currency(quote)}, true
 }
 
+// AssetsFor returns every reference price needed to price symbol: its base in
+// the reference currency and, when the symbol is quoted in a dollar stablecoin
+// ("BTCUSDT"), the stablecoin itself. The trade is then compared with the base
+// priced in that stablecoin, so the stablecoin's own distance from the dollar
+// (USDT trades near, not at, 1 USD) does not read as a deviation.
+func AssetsFor(symbol string) []Asset {
+	asset, ok := AssetFor(symbol)
+	if !ok {
+		return nil
+	}
+	out := []Asset{asset}
+	if _, quote, _ := SplitPair(symbol); quote != asset.Convert {
+		out = append(out, Asset{Base: quote, Convert: asset.Convert})
+	}
+	return out
+}
+
 // Quote is one reference price and when the provider last updated it.
 type Quote struct {
 	Price     domain.Decimal
@@ -143,16 +160,15 @@ func (m *Monitor) Check(now time.Time, obs []Observation, quotes map[Asset]Quote
 	var results []Result
 	var incidents []domain.Incident
 	for _, o := range obs {
-		asset, ok := AssetFor(o.Key.Symbol)
-		if !ok || o.Price.IsZero() || now.Sub(o.ReceivedAt) > m.cfg.MaxTradeAge {
+		if o.Price.IsZero() || now.Sub(o.ReceivedAt) > m.cfg.MaxTradeAge {
 			continue
 		}
-		q, ok := quotes[asset]
-		if !ok || q.Price.IsZero() || now.Sub(q.UpdatedAt) > m.cfg.MaxQuoteAge {
+		asset, ref, ok := m.reference(now, o.Key.Symbol, quotes)
+		if !ok {
 			continue
 		}
-		dev := Deviation(o.Price, q.Price)
-		results = append(results, Result{Key: o.Key, Asset: asset, Reference: q.Price, Deviation: dev, CheckedAt: now})
+		dev := Deviation(o.Price, ref)
+		results = append(results, Result{Key: o.Key, Asset: asset, Reference: ref, Deviation: dev, CheckedAt: now})
 		switch abs := math.Abs(dev); {
 		case abs >= m.cfg.Threshold && !m.breached[o.Key]:
 			m.breached[o.Key] = true
@@ -160,13 +176,41 @@ func (m *Monitor) Check(now time.Time, obs []Observation, quotes map[Asset]Quote
 				Exchange: o.Key.Exchange, Symbol: o.Key.Symbol, Kind: domain.KindPriceDeviation,
 				DetectedAt: now,
 				Detail: fmt.Sprintf("last trade %s vs CoinMarketCap %s %s (%+.2f%%, threshold %.2f%%)",
-					o.Price, domain.FormatRat(q.Price.Rat()), asset.Convert, dev*100, m.cfg.Threshold*100),
+					o.Price, ref, asset.Convert, dev*100, m.cfg.Threshold*100),
 			})
 		case abs < m.cfg.Threshold/2:
 			delete(m.breached, o.Key)
 		}
 	}
 	return results, incidents
+}
+
+// reference returns the price to compare symbol's trades with, and the asset it
+// is expressed in: the base in the reference currency, or, for a stablecoin
+// quote, the base divided by the stablecoin (both from the same provider). It
+// reports false when a quote is missing, zero or older than MaxQuoteAge.
+func (m *Monitor) reference(now time.Time, symbol string, quotes map[Asset]Quote) (Asset, domain.Decimal, bool) {
+	assets := AssetsFor(symbol)
+	if len(assets) == 0 {
+		return Asset{}, domain.Decimal{}, false
+	}
+	prices := make([]*big.Rat, len(assets))
+	for i, a := range assets {
+		q, ok := quotes[a]
+		if !ok || q.Price.IsZero() || now.Sub(q.UpdatedAt) > m.cfg.MaxQuoteAge {
+			return Asset{}, domain.Decimal{}, false
+		}
+		prices[i] = q.Price.Rat()
+	}
+	if len(assets) == 1 {
+		return assets[0], quotes[assets[0]].Price, true
+	}
+	// Base in the stablecoin: (base in USD) / (stablecoin in USD).
+	cross, err := domain.ParseDecimal(domain.FormatRat(new(big.Rat).Quo(prices[0], prices[1])))
+	if err != nil {
+		return Asset{}, domain.Decimal{}, false
+	}
+	return Asset{Base: assets[0].Base, Convert: assets[1].Base}, cross, true
 }
 
 // Deviation returns (price − ref) / ref, computed exactly and rounded once.

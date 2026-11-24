@@ -92,7 +92,7 @@ func TestReferenceCheck(t *testing.T) {
 		{Exchange: "klever", Symbol: "mainnet", Kind: domain.StreamBlocks, LastPrice: "", LastReceivedTime: now},
 		{Exchange: "kraken", Symbol: "ETH/USD", Kind: domain.StreamTrades}, // never traded
 	}
-	src := &fakeRefSource{prices: map[string]map[string]string{"USD": {"BTC": "100"}}, fail: map[string]bool{"BRL": true}, at: now}
+	src := &fakeRefSource{prices: map[string]map[string]string{"USD": {"BTC": "100", "USDT": "1"}}, fail: map[string]bool{"BRL": true}, at: now}
 	rec := &fakeRecorder{}
 	met := &fakeRefMetrics{devs: map[string]float64{}}
 	rc, err := NewReferenceCheck(ReferenceConfig{Monitor: reference.DefaultConfig(), Interval: time.Minute}, ReferenceDeps{
@@ -104,7 +104,7 @@ func TestReferenceCheck(t *testing.T) {
 	}
 	rc.Check(context.Background())
 
-	if want := []string{"BRL:BTC", "USD:BTC,ETH"}; strings.Join(src.calls, " ") != strings.Join(want, " ") {
+	if want := []string{"BRL:BTC", "USD:BTC,ETH,USDT"}; strings.Join(src.calls, " ") != strings.Join(want, " ") {
 		t.Errorf("calls = %v, want one per currency %v", src.calls, want)
 	}
 	if met.ok != 1 || met.failed != 1 {

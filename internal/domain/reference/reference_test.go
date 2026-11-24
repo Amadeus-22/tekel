@@ -2,6 +2,7 @@ package reference
 
 import (
 	"math"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -63,7 +64,7 @@ func TestConfigValidate(t *testing.T) {
 
 var (
 	t0  = time.Date(2026, 11, 23, 12, 0, 0, 0, time.UTC)
-	btc = domain.StreamKey{Exchange: "binance", Symbol: "BTCUSDT"}
+	btc = domain.StreamKey{Exchange: "kraken", Symbol: "BTC/USD"} // a USD pair: no stablecoin cross
 	usd = Asset{"BTC", "USD"}
 )
 
@@ -135,5 +136,51 @@ func TestMonitorSkipsStaleOrMissingData(t *testing.T) {
 		if res, inc := m.Check(t0, c.o, c.q); len(res) != 0 || len(inc) != 0 {
 			t.Errorf("%s: %d results, %d incidents; want none", name, len(res), len(inc))
 		}
+	}
+}
+
+func TestAssetsForAddsTheStablecoinQuote(t *testing.T) {
+	for symbol, want := range map[string][]Asset{
+		"BTCUSDT":  {{"BTC", "USD"}, {"USDT", "USD"}},
+		"ETH-USDC": {{"ETH", "USD"}, {"USDC", "USD"}},
+		"BTC/USD":  {{"BTC", "USD"}},
+		"BTC-BRL":  {{"BTC", "BRL"}},
+		"XYZ":      nil,
+	} {
+		if got := AssetsFor(symbol); !slices.Equal(got, want) {
+			t.Errorf("AssetsFor(%q) = %v, want %v", symbol, got, want)
+		}
+	}
+}
+
+// USDT at 0.999 USD made every Binance USDT pair read about 0.1% above
+// CoinMarketCap's USD price; priced in USDT, the same trade is in line.
+func TestMonitorPricesStablecoinPairsInTheStablecoin(t *testing.T) {
+	m, _ := NewMonitor(DefaultConfig())
+	pair := domain.StreamKey{Exchange: "binance", Symbol: "BTCUSDT"}
+	trade := []Observation{{Key: pair, Price: domain.MustDecimal("100.1"), ReceivedAt: t0}}
+	q := map[Asset]Quote{
+		{"BTC", "USD"}:  {Price: domain.MustDecimal("100"), UpdatedAt: t0},
+		{"USDT", "USD"}: {Price: domain.MustDecimal("0.999"), UpdatedAt: t0},
+	}
+	res, _ := m.Check(t0, trade, q)
+	if len(res) != 1 {
+		t.Fatalf("results = %v, want one", res)
+	}
+	if res[0].Asset != (Asset{"BTC", "USDT"}) {
+		t.Errorf("asset = %v, want BTC/USDT", res[0].Asset)
+	}
+	// 100 / 0.999 = 100.1001…; the trade is 0.0001% below it.
+	if d := res[0].Deviation; math.Abs(d) > 0.00001 {
+		t.Errorf("deviation = %v, want about 0 once priced in USDT (it was +0.1%% against USD)", d)
+	}
+
+	delete(q, Asset{"USDT", "USD"})
+	if res, _ := m.Check(t0, trade, q); len(res) != 0 {
+		t.Errorf("without the USDT quote: %v, want no comparison rather than one against USD", res)
+	}
+	q[Asset{"USDT", "USD"}] = Quote{Price: domain.MustDecimal("0.999"), UpdatedAt: t0.Add(-time.Hour)}
+	if res, _ := m.Check(t0, trade, q); len(res) != 0 {
+		t.Errorf("with a stale USDT quote: %v, want no comparison", res)
 	}
 }
