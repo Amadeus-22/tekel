@@ -97,3 +97,35 @@ func TestNewRequiresKey(t *testing.T) {
 		t.Fatalf("err = %v, want ErrNoKey", err)
 	}
 }
+
+// key_info.json is a real /v1/key/info response, recorded on 2026-11-24.
+func TestUsageReadsKeyInfo(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/key_info.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := serve(t, http.StatusOK, string(fixture), func(r *http.Request) {
+		if r.URL.Path != "/v1/key/info" || r.URL.RawQuery != "" {
+			t.Errorf("request = %s?%s", r.URL.Path, r.URL.RawQuery)
+		}
+		if r.Header.Get("X-CMC_PRO_API_KEY") != "k" {
+			t.Error("key must travel in the header")
+		}
+	})
+	c, _ := New("k", srv.URL)
+	u, err := c.Usage(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.UsedToday != 247 || u.UsedMonth != 327 || u.LeftMonth != 449673 {
+		t.Errorf("usage = %+v", u)
+	}
+}
+
+func TestUsageReportsAPIError(t *testing.T) {
+	srv := serve(t, http.StatusUnauthorized, `{"status":{"error_code":1001,"error_message":"This API Key is invalid."}}`, nil)
+	c, _ := New("k", srv.URL)
+	if _, err := c.Usage(context.Background()); err == nil || !strings.Contains(err.Error(), "1001") {
+		t.Errorf("Usage() = %v, want the API error", err)
+	}
+}

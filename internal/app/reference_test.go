@@ -52,6 +52,7 @@ func (f *fakeRecorder) Record(_ context.Context, inc domain.Incident) {
 
 type fakeRefMetrics struct {
 	ok, failed int
+	usage      []reference.Usage
 	devs       map[string]float64
 }
 
@@ -66,6 +67,17 @@ func (f *fakeRefMetrics) ReferenceFetch(ok bool) {
 func (f *fakeRefMetrics) ReferenceDeviation(exchange, symbol string, d float64) {
 	f.devs[exchange+":"+symbol] = d
 }
+
+func (f *fakeRefMetrics) ReferenceUsage(u reference.Usage) { f.usage = append(f.usage, u) }
+
+// usageSource is a reference source that also reports its credit usage.
+type usageSource struct {
+	fakeRefSource
+	usage reference.Usage
+	err   error
+}
+
+func (u *usageSource) Usage(context.Context) (reference.Usage, error) { return u.usage, u.err }
 
 func TestReferenceCheck(t *testing.T) {
 	now := time.Date(2026, 11, 23, 12, 0, 0, 0, time.UTC)
@@ -153,5 +165,37 @@ func TestReferenceCheckRunChecksSoonAfterStart(t *testing.T) {
 	_ = rc.Run(ctx)
 	if len(src.calls) != 1 {
 		t.Fatalf("calls = %v, want exactly one check before the hour-long interval", src.calls)
+	}
+}
+
+func TestReferenceCheckReportsUsageWhenTheSourceCan(t *testing.T) {
+	newCheck := func(src ReferenceSource, met *fakeRefMetrics) *ReferenceCheck {
+		rc, err := NewReferenceCheck(ReferenceConfig{Monitor: reference.DefaultConfig(), Interval: time.Minute}, ReferenceDeps{
+			Source: src, Streams: fakeLister{}, Recorder: &fakeRecorder{}, Metrics: met,
+			Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return rc
+	}
+
+	met := &fakeRefMetrics{devs: map[string]float64{}}
+	want := reference.Usage{UsedToday: 3, UsedMonth: 40, LeftMonth: 9960}
+	newCheck(&usageSource{usage: want}, met).Check(context.Background())
+	if len(met.usage) != 1 || met.usage[0] != want {
+		t.Errorf("usage = %v, want [%v]", met.usage, want)
+	}
+
+	met = &fakeRefMetrics{devs: map[string]float64{}}
+	newCheck(&usageSource{err: errors.New("boom")}, met).Check(context.Background())
+	if len(met.usage) != 0 {
+		t.Errorf("usage after a failed read = %v, want none", met.usage)
+	}
+
+	met = &fakeRefMetrics{devs: map[string]float64{}}
+	newCheck(&fakeRefSource{}, met).Check(context.Background())
+	if len(met.usage) != 0 {
+		t.Errorf("usage from a source without Usage = %v, want none", met.usage)
 	}
 }

@@ -71,6 +71,11 @@ type Quote struct {
 	UpdatedAt time.Time
 }
 
+// Usage is the API credit consumption the provider reports for the key.
+type Usage struct {
+	UsedToday, UsedMonth, LeftMonth int
+}
+
 // Observation is a stream's last trade.
 type Observation struct {
 	Key        domain.StreamKey
