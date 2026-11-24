@@ -34,7 +34,7 @@ func TestDefaults(t *testing.T) {
 	if c.ClockSkew != 2*time.Second || c.StaleAfter != time.Minute || c.SpikeK != 10 || c.Buffer != 4096 {
 		t.Errorf("thresholds = %+v", c)
 	}
-	if len(c.StaleAfterOverrides) != 0 {
+	if len(c.StaleAfterOverrides) != 0 || len(c.ClockSkewOverrides) != 0 {
 		t.Errorf("overrides = %v", c.StaleAfterOverrides)
 	}
 }
@@ -47,6 +47,7 @@ func TestOverridesFromEnv(t *testing.T) {
 		"TEKEL_DUPLICATE_WINDOW":      "50",
 		"TEKEL_SPIKE_MIN_DEVIATION":   "0.01",
 		"TEKEL_STALE_AFTER_OVERRIDES": "binance:SOLUSDT=5m, kraken:ETH/USD=90s",
+		"TEKEL_CLOCK_SKEW_OVERRIDES":  "klever:mainnet=5s",
 	}), sources)
 	if err != nil {
 		t.Fatal(err)
@@ -59,6 +60,9 @@ func TestOverridesFromEnv(t *testing.T) {
 	eth := domain.StreamKey{Exchange: "kraken", Symbol: "ETH/USD"}
 	if c.StaleAfterOverrides[sol] != 5*time.Minute || c.StaleAfterOverrides[eth] != 90*time.Second {
 		t.Errorf("overrides = %v", c.StaleAfterOverrides)
+	}
+	if c.ClockSkewOverrides[domain.StreamKey{Exchange: "klever", Symbol: "mainnet"}] != 5*time.Second {
+		t.Errorf("clock skew overrides = %v", c.ClockSkewOverrides)
 	}
 }
 

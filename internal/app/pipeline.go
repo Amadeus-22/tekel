@@ -31,6 +31,9 @@ type Config struct {
 	// StaleAfter overrides Quality.StaleAfter for individual streams, because an
 	// illiquid pair can be silent for minutes without anything being wrong.
 	StaleAfter map[domain.StreamKey]time.Duration
+	// ClockSkew overrides Quality.ClockSkew for individual streams, because a
+	// block's timestamp is when its round started, not when it was final.
+	ClockSkew map[domain.StreamKey]time.Duration
 	// Buffer is the capacity of the channel between feeds and the validator.
 	// When it is full, feeds block: see docs/adr/0003.
 	Buffer int
@@ -147,15 +150,21 @@ func NewPipeline(cfg Config, d Deps) (*Pipeline, error) {
 	}
 	// An override for a stream no feed carries is a typo or a disabled feed;
 	// ignoring it would leave the stream it was meant for on the default.
-	var unknown []string
-	for key := range cfg.StaleAfter {
-		if _, ok := p.streams[key]; !ok {
-			unknown = append(unknown, key.String())
+	for _, o := range []struct {
+		name      string
+		overrides map[domain.StreamKey]time.Duration
+	}{{"stale", cfg.StaleAfter}, {"clock skew", cfg.ClockSkew}} {
+		name, overrides := o.name, o.overrides
+		var unknown []string
+		for key := range overrides {
+			if _, ok := p.streams[key]; !ok {
+				unknown = append(unknown, key.String())
+			}
 		}
-	}
-	if len(unknown) > 0 {
-		slices.Sort(unknown)
-		return nil, fmt.Errorf("new pipeline: stale override for %s matches no configured stream", strings.Join(unknown, ", "))
+		if len(unknown) > 0 {
+			slices.Sort(unknown)
+			return nil, fmt.Errorf("new pipeline: %s override for %s matches no configured stream", name, strings.Join(unknown, ", "))
+		}
 	}
 	return p, nil
 }
@@ -375,6 +384,9 @@ func (p *Pipeline) stream(key domain.StreamKey, kind domain.StreamKind) *stream 
 	qcfg := p.cfg.Quality
 	if d, ok := p.cfg.StaleAfter[key]; ok {
 		qcfg.StaleAfter = d
+	}
+	if d, ok := p.cfg.ClockSkew[key]; ok {
+		qcfg.ClockSkew = d
 	}
 	newValidator := quality.NewStream
 	if kind == domain.StreamBlocks {
