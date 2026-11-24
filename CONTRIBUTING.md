@@ -36,6 +36,13 @@ API pick the new source up from that row.
 The full layout and conventions are in
 [ENGINEERING.md](ENGINEERING.md).
 
+### End-to-end tests
+
+`make test-integration` runs the whole service in-process (config, a fake exchange
+on `wsconn/wstest`, pipeline, SQLite, HTTP API) and checks `/v1/incidents`.
+To add a scenario, copy a test in `cmd/tekel/e2e_test.go`: script what the fake
+exchange sends, call `startTekel`, then `waitIncident` for the kind you expect.
+
 ## Pull requests
 
 - Open an issue first for anything larger than a fix, so we agree on the approach.

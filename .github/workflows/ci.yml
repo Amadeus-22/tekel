@@ -18,5 +18,7 @@ jobs:
           go-version-file: go.mod
       - name: make check
         run: make check
+      - name: end-to-end
+        run: make test-integration
       - name: build
         run: make build

@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -40,24 +41,27 @@ func main() {
 		stop()
 		os.Exit(code)
 	}
-	if err := run(); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	err := run(ctx, os.LookupEnv, os.Stdout)
+	stop()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "tekel:", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
-	cfg, err := config.FromEnv(sourceConfigs())
+// run starts the service with the configuration read through lookup and logs
+// to stdout until ctx is cancelled. The end-to-end test (e2e_test.go) calls it
+// with fake exchanges, so main stays a thin shell around it.
+func run(ctx context.Context, lookup config.Lookup, stdout io.Writer) error {
+	cfg, err := config.Load(lookup, sourceConfigs())
 	if err != nil {
 		return err
 	}
-	log, err := logging.New(os.Stdout, cfg.LogLevel)
+	log, err := logging.New(stdout, cfg.LogLevel)
 	if err != nil {
 		return err
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	m := metrics.New()
 	store, err := sqlite.Open(ctx, cfg.DBPath)
