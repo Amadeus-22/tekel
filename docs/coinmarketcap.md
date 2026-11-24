@@ -41,7 +41,8 @@ Where it shows up:
 
 - `GET /v1/streams`: each trade stream gets a `reference` object
   (`source`, `asset`, `price`, `deviation`, `checked_at`).
-- The status page: CoinMarketCap's price and the deviation under every stream.
+- Grafana: "Worst deviation from CoinMarketCap", "Deviation from CoinMarketCap, by stream"
+  (with the 1% threshold) and "CoinMarketCap checks".
 - Prometheus: `tekel_reference_deviation_ratio{exchange,symbol}` and
   `tekel_reference_fetches_total{outcome}`.
 - Alerts: `price_deviation` goes to Telegram or a webhook like any other kind.
@@ -60,9 +61,9 @@ coins per symbol):
 The adapter's tests replay a recorded response,
 [`internal/adapter/cmc/testdata/quotes_usd.json`](../internal/adapter/cmc/testdata/quotes_usd.json).
 
-On the status page, every trade stream shows CoinMarketCap's price and the deviation:
+On the Grafana dashboard, the top row and the deviation chart come from CoinMarketCap:
 
-![Tekel status page with CoinMarketCap reference prices under each stream](assets/status-cmc.png)
+![Tekel Grafana dashboard with the deviation of every stream from CoinMarketCap's price](assets/grafana.png)
 
 ## API credits
 

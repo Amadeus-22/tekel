@@ -90,7 +90,11 @@ Grafana is at <http://localhost:3000> (anonymous read-only), Prometheus at
 <http://localhost:9090>; both listen on 127.0.0.1 only. Without the profile, only
 Tekel starts.
 
-![Tekel Grafana dashboard: connection state, trades and blocks per second, receive lag, incidents by kind, backpressure and sink errors](docs/assets/grafana.png)
+The dashboard is the public face of Tekel: uptime per feed, incidents by kind and
+stream, and how far each stream is from CoinMarketCap's price, over the last 24
+hours by default.
+
+![Tekel Grafana dashboard: uptime per feed, incidents by kind, deviation from CoinMarketCap by stream, connection state, trades and blocks per second, receive lag](docs/assets/grafana.png)
 
 ## Configuration
 
@@ -120,15 +124,6 @@ Durations use Go syntax (`500ms`, `30s`, `5m`).
 
 Endpoint URLs, spike, duplicate-window, buffer and shutdown settings are in
 [.env.example](.env.example).
-
-## Status page
-
-Open `http://127.0.0.1:8080/` for a live page anyone can read: whether every feed is
-healthy right now, the last trade or block and its lag per stream, and the last 24
-hours of incidents with repeats grouped. It refreshes every 10 seconds, is served by
-the same binary, and loads nothing from other sites (strict Content-Security-Policy).
-
-![Tekel status page: all feeds healthy, Binance, KleverChain and Kraken streams with lag, and the incidents of the last 24 hours](docs/assets/status-page.png)
 
 ## Alerts
 

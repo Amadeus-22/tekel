@@ -98,7 +98,7 @@ flowchart LR
 | `internal/adapter/sqlite` | `IncidentStore` + incident query, schema, readiness ping |
 | `internal/adapter/leanfs` | `BarSink` writing LEAN zips atomically (temp file + rename), continues a day after restart; `Source` (read-only `LeanSource` over a folder or one zip) |
 | `internal/adapter/auditreport` | renders an `AuditReport` as a table or JSON; golden fixtures trimmed from LEAN samples in `testdata/` |
-| `internal/adapter/httpapi` | `/v1/streams`, `/v1/incidents`, `/healthz`, `/readyz`, `/metrics`; the status page at `/` (embedded `web/`: HTML, CSS and JS reading `/v1/streams` and `/v1/incidents`, strict CSP, no other origin) |
+| `internal/adapter/httpapi` | `/v1/streams`, `/v1/incidents`, `/healthz`, `/readyz`, `/metrics`; the dashboard is Grafana (`deploy/grafana`) |
 | `internal/platform/config` | environment variables → validated `Config`; knows no exchange by name: `Load` takes the declared `Source`s and returns one `Feed` per source in that order; stale overrides keyed by `domain.StreamKey` |
 | `internal/platform/logging` | `slog` JSON logger |
 | `internal/platform/metrics` | Prometheus registry; implements `app.Metrics` |
