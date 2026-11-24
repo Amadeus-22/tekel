@@ -6,16 +6,419 @@
   ],
   "timezone": "utc",
   "schemaVersion": 39,
-  "version": 1,
-  "refresh": "10s",
+  "version": 2,
+  "refresh": "1m",
   "time": {
-    "from": "now-15m",
+    "from": "now-24h",
     "to": "now"
   },
   "editable": false,
   "graphTooltip": 1,
-  "description": "Live data-quality view of every Tekel stream. Metrics: README \"Metrics\".",
+  "description": "Live data quality of public crypto feeds (Binance, Kraken, KleverChain), checked against CoinMarketCap. Source: github.com/Amadeus-22/tekel",
   "panels": [
+    {
+      "id": 101,
+      "type": "stat",
+      "title": "Uptime in range",
+      "description": "Share of the selected time range each feed was connected and subscribed (avg of tekel_connected).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "avg by (exchange) (avg_over_time(tekel_connected[$__range]))",
+          "legendFormat": "{{exchange}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.99
+              },
+              {
+                "color": "green",
+                "value": 0.999
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 102,
+      "type": "stat",
+      "title": "Incidents in range",
+      "description": "Data-quality incidents detected in the selected range, by kind, all streams. Every incident: GET /v1/incidents.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 8,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (kind) (increase(tekel_incidents_total[$__range]))",
+          "legendFormat": "{{kind}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 103,
+      "type": "stat",
+      "title": "Worst deviation from CoinMarketCap",
+      "description": "Largest distance in the range between a stream's last trade and CoinMarketCap's price for the asset (tekel_reference_deviation_ratio). price_deviation fires at 1%.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 0,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (exchange) (max_over_time(abs(tekel_reference_deviation_ratio)[$__range:]))",
+          "legendFormat": "{{exchange}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 3,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.005
+              },
+              {
+                "color": "red",
+                "value": 0.01
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 104,
+      "type": "stat",
+      "title": "CoinMarketCap checks",
+      "description": "Reference price requests to CoinMarketCap in the range, by outcome (tekel_reference_fetches_total).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (outcome) (increase(tekel_reference_fetches_total[$__range]))",
+          "legendFormat": "{{outcome}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 105,
+      "type": "timeseries",
+      "title": "Deviation from CoinMarketCap, by stream",
+      "description": "Last trade minus CoinMarketCap's price, divided by that price (0.01 = 1% above). Dashed lines: the 1% price_deviation threshold.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 16,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "tekel_reference_deviation_ratio",
+          "legendFormat": "{{exchange}} {{symbol}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": -0.01
+              },
+              {
+                "color": "transparent",
+                "value": -0.00999
+              },
+              {
+                "color": "red",
+                "value": 0.01
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 106,
+      "type": "bargauge",
+      "title": "Incidents in range, by stream",
+      "description": "Incidents per stream and kind in the selected range.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 5,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sort_desc(sum by (exchange, symbol, kind) (increase(tekel_incidents_total[$__range])) > 0)",
+          "legendFormat": "{{exchange}} {{symbol}} {{kind}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "color": {
+            "mode": "continuous-YlRd"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
     {
       "id": 1,
       "type": "stat",
@@ -27,7 +430,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 13,
         "w": 4,
         "h": 7
       },
@@ -110,7 +513,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 0,
+        "y": 13,
         "w": 10,
         "h": 7
       },
@@ -163,7 +566,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 0,
+        "y": 13,
         "w": 10,
         "h": 7
       },
@@ -216,8 +619,8 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 7,
-        "w": 10,
+        "y": 20,
+        "w": 24,
         "h": 7
       },
       "targets": [
@@ -266,68 +669,6 @@
       }
     },
     {
-      "id": 5,
-      "type": "bargauge",
-      "title": "Incidents since start",
-      "description": "Total incidents per stream and kind since the process started.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 10,
-        "y": 7,
-        "w": 14,
-        "h": 7
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum by (exchange, symbol, kind) (tekel_incidents_total)",
-          "legendFormat": "{{exchange}} {{symbol}} {{kind}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "orange"
-          },
-          "min": 0,
-          "displayName": "${__field.labels.exchange} ${__field.labels.symbol} \u00b7 ${__field.labels.kind}"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "horizontal",
-        "displayMode": "basic",
-        "showUnfilled": true,
-        "valueMode": "text",
-        "namePlacement": "left",
-        "sizing": "manual",
-        "maxVizHeight": 22,
-        "minVizHeight": 10,
-        "minVizWidth": 8,
-        "text": {
-          "titleSize": 12,
-          "valueSize": 14
-        }
-      }
-    },
-    {
       "id": 6,
       "type": "timeseries",
       "title": "Backpressure (seconds blocked per second)",
@@ -338,7 +679,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 14,
+        "y": 27,
         "w": 8,
         "h": 5
       },
@@ -391,7 +732,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 14,
+        "y": 27,
         "w": 8,
         "h": 5
       },
@@ -445,7 +786,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 14,
+        "y": 27,
         "w": 8,
         "h": 5
       },
