@@ -744,8 +744,8 @@
     {
       "id": 2,
       "type": "timeseries",
-      "title": "Trades / blocks per second",
-      "description": "Accepted events per second per stream: trades, or blocks for klever (tekel_trades_total).",
+      "title": "Trades per second (exchanges)",
+      "description": "Trades received per second per exchange pair (tekel_trades_total). Exchanges have no blocks: each trade carries the exchange's own sequential trade ID.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -753,7 +753,7 @@
       "gridPos": {
         "x": 4,
         "y": 23,
-        "w": 10,
+        "w": 7,
         "h": 7
       },
       "targets": [
@@ -795,6 +795,81 @@
       }
     },
     {
+      "id": 9,
+      "type": "timeseries",
+      "title": "KleverChain blocks and transactions",
+      "description": "Blocks per second (tekel_blocks_total; one block every ~4 s on mainnet) and transactions per second, from each block's txCount (tekel_block_transactions_total).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 11,
+        "y": 23,
+        "w": 6,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (chain, network) (rate(tekel_blocks_total[1m]))",
+          "legendFormat": "blocks/s {{chain}} {{network}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (chain, network) (rate(tekel_block_transactions_total[1m]))",
+          "legendFormat": "txs/s {{chain}} {{network}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
       "id": 3,
       "type": "timeseries",
       "title": "Receive lag p99",
@@ -804,9 +879,9 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 14,
+        "x": 17,
         "y": 23,
-        "w": 10,
+        "w": 7,
         "h": 7
       },
       "targets": [

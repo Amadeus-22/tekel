@@ -20,6 +20,8 @@ func TestMetricsRecordAndServe(t *testing.T) {
 	m := New()
 	m.TradeReceived("binance", "BTCUSDT", 40*time.Millisecond)
 	m.TradeReceived("binance", "BTCUSDT", -time.Second) // clamps to 0
+	m.BlockReceived("klever", "mainnet", 3, 2*time.Second)
+	m.BlockReceived("klever", "mainnet", 0, 2*time.Second)
 	m.IncidentRecorded("binance", "BTCUSDT", domain.KindSequenceGap)
 	m.LateTrade("binance", "BTCUSDT")
 	m.SetConnected("binance", true)
@@ -34,6 +36,9 @@ func TestMetricsRecordAndServe(t *testing.T) {
 		name string
 	}{
 		{testutil.ToFloat64(m.trades.WithLabelValues("binance", "BTCUSDT")), 2, "trades"},
+		{testutil.ToFloat64(m.blocks.WithLabelValues("klever", "mainnet")), 2, "blocks"},
+		{testutil.ToFloat64(m.blockTxs.WithLabelValues("klever", "mainnet")), 3, "block transactions"},
+		{float64(testutil.CollectAndCount(m.trades)), 1, "trade series (blocks must not add one)"},
 		{testutil.ToFloat64(m.incidents.WithLabelValues("binance", "BTCUSDT", "sequence_gap")), 1, "incidents"},
 		{testutil.ToFloat64(m.lateTrades.WithLabelValues("binance", "BTCUSDT")), 1, "late"},
 		{testutil.ToFloat64(m.connected.WithLabelValues("binance")), 1, "connected binance"},
@@ -52,7 +57,7 @@ func TestMetricsRecordAndServe(t *testing.T) {
 	m.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/metrics", nil))
 	body, _ := io.ReadAll(rec.Body)
 	for _, name := range []string{
-		"tekel_trades_total", "tekel_incidents_total", "tekel_feed_lag_seconds_bucket",
+		"tekel_trades_total", "tekel_blocks_total", "tekel_block_transactions_total", "tekel_incidents_total", "tekel_feed_lag_seconds_bucket",
 		"tekel_connected", "tekel_decode_errors_total", "tekel_backpressure_seconds_total",
 		"tekel_late_trades_total", "tekel_sink_errors_total", "go_goroutines",
 	} {

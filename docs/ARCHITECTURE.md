@@ -122,8 +122,11 @@ flowchart LR
 
 ## Metrics
 
-`tekel_trades_total{exchange,symbol}`, `tekel_incidents_total{exchange,symbol,kind}`,
-`tekel_feed_lag_seconds{exchange,symbol}` (histogram of received − exchange time),
+`tekel_trades_total{exchange,symbol}` (exchange trades only),
+`tekel_blocks_total{chain,network}` and `tekel_block_transactions_total{chain,network}` (chain blocks and
+the sum of their `txCount`; a block is never counted as a trade), `tekel_incidents_total{exchange,symbol,kind}`,
+`tekel_feed_lag_seconds{exchange,symbol}` (histogram of received − source time; chains use the chain and
+network as `exchange` and `symbol`),
 `tekel_connected{exchange}`, `tekel_decode_errors_total{exchange}`,
 `tekel_backpressure_seconds_total{exchange}`, `tekel_late_trades_total{exchange,symbol}`,
 `tekel_sink_errors_total{sink}`, `tekel_alerts_total{sender,outcome}`, plus the Go runtime and process collectors.

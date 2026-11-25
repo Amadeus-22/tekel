@@ -69,6 +69,9 @@ type BarSink interface {
 // lives in internal/platform/metrics; tests use a fake.
 type Metrics interface {
 	TradeReceived(exchange, symbol string, lag time.Duration)
+	// BlockReceived counts a chain block and the transactions it carries.
+	// Blocks are not trades: they have their own metrics.
+	BlockReceived(chain, network string, txs int, lag time.Duration)
 	IncidentRecorded(exchange, symbol string, kind domain.IncidentKind)
 	LateTrade(exchange, symbol string)
 	SetConnected(exchange string, up bool)
