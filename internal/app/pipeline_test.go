@@ -101,6 +101,8 @@ func (s *fakeSink) written() []domain.Bar {
 type fakeMetrics struct {
 	mu           sync.Mutex
 	trades       int
+	blocks       int
+	blockTxs     int
 	incidents    map[domain.IncidentKind]int
 	late         int
 	connected    map[string]bool
@@ -118,6 +120,13 @@ func (m *fakeMetrics) TradeReceived(string, string, time.Duration) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.trades++
+}
+
+func (m *fakeMetrics) BlockReceived(_, _ string, txs int, _ time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.blocks++
+	m.blockTxs += txs
 }
 
 func (m *fakeMetrics) IncidentRecorded(_, _ string, k domain.IncidentKind) {
@@ -282,7 +291,7 @@ func TestPipelineBlockStream(t *testing.T) {
 	blockEv := func(nonce int64, at time.Duration) Event {
 		ts := t0.Add(at)
 		return Event{Kind: EventBlock, Exchange: chain, At: ts, Block: domain.Block{
-			Chain: chain, Network: network, Nonce: nonce, Hash: fmt.Sprintf("h%d", nonce),
+			Chain: chain, Network: network, Nonce: nonce, Hash: fmt.Sprintf("h%d", nonce), TxCount: 2,
 			ChainTime: ts, ReceivedTime: ts.Add(500 * time.Millisecond),
 		}}
 	}
@@ -315,6 +324,11 @@ func TestPipelineBlockStream(t *testing.T) {
 	if s.Exchange != chain || s.Symbol != network || s.Kind != domain.StreamBlocks || s.Trades != 4 ||
 		s.LastTradeID != 109 || s.LastPrice != "" || s.Lag != 500*time.Millisecond || !s.Connected {
 		t.Errorf("status = %+v", s)
+	}
+	// Blocks are counted as blocks (duplicate included), never as trades.
+	if h.metrics.trades != 0 || h.metrics.blocks != 5 || h.metrics.blockTxs != 10 {
+		t.Errorf("metrics: trades=%d blocks=%d txs=%d, want 0, 5, 10",
+			h.metrics.trades, h.metrics.blocks, h.metrics.blockTxs)
 	}
 }
 

@@ -267,6 +267,7 @@ func (p *Pipeline) handle(ctx context.Context, ev Event) {
 
 func (p *Pipeline) handleTrade(ctx context.Context, t domain.Trade) {
 	s := p.stream(t.Key(), domain.StreamTrades)
+	p.metrics.TradeReceived(t.Exchange, t.Symbol, t.ReceivedTime.Sub(t.ExchangeTime))
 	if !p.accept(ctx, s, s.quality.Observe(t), t.TradeID, t.Price.String(), t.ExchangeTime, t.ReceivedTime) {
 		return
 	}
@@ -287,6 +288,7 @@ func (p *Pipeline) handleTrade(ctx context.Context, t domain.Trade) {
 // only the stream status, incidents and metrics see them.
 func (p *Pipeline) handleBlock(ctx context.Context, b domain.Block) {
 	s := p.stream(b.Key(), domain.StreamBlocks)
+	p.metrics.BlockReceived(b.Chain, b.Network, b.TxCount, b.ReceivedTime.Sub(b.ChainTime))
 	p.accept(ctx, s, s.quality.ObserveBlock(b), b.Nonce, "", b.ChainTime, b.ReceivedTime)
 }
 
@@ -296,7 +298,6 @@ func (p *Pipeline) handleBlock(ctx context.Context, b domain.Block) {
 func (p *Pipeline) accept(ctx context.Context, s *stream, v quality.Verdict, id int64, price string,
 	exchTime, received time.Time) bool {
 	lag := received.Sub(exchTime)
-	p.metrics.TradeReceived(s.status.Exchange, s.status.Symbol, lag)
 	for _, inc := range v.Incidents {
 		p.record(ctx, inc)
 	}

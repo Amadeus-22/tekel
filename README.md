@@ -6,7 +6,7 @@
 
 <p align="center">Tekel finds the trades and blocks your market data silently lost.</p>
 
-<p align="center"><b><a href="https://37-27-35-19.sslip.io">Live dashboard</a></b>: Binance, Kraken, Coinbase and KleverChain, checked against CoinMarketCap, running now.</p>
+<p align="center"><b><a href="https://tekel-io.duckdns.org">Live dashboard</a></b>: Binance, Kraken, Coinbase and KleverChain, checked against CoinMarketCap, running now.</p>
 
 <p align="center">
   <a href="https://github.com/Amadeus-22/tekel/actions/workflows/ci.yml"><img src="https://github.com/Amadeus-22/tekel/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
@@ -189,7 +189,8 @@ the process.
 | `GET /metrics` | Prometheus |
 
 Errors are `{"error":{"code":"snake_case","message":"..."}}`. Metrics:
-`tekel_trades_total`, `tekel_incidents_total{kind}`, `tekel_feed_lag_seconds`,
+`tekel_trades_total` (exchange trades), `tekel_blocks_total` and `tekel_block_transactions_total`
+(chain blocks and their transactions), `tekel_incidents_total{kind}`, `tekel_feed_lag_seconds`,
 `tekel_connected`, `tekel_decode_errors_total`, `tekel_backpressure_seconds_total`,
 `tekel_late_trades_total`, `tekel_sink_errors_total`, `tekel_alerts_total`, labelled by `exchange` and
 `symbol` where they apply (full list in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#metrics)).

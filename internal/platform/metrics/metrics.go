@@ -20,6 +20,8 @@ type Metrics struct {
 	reg *prometheus.Registry
 
 	trades       *prometheus.CounterVec
+	blocks       *prometheus.CounterVec
+	blockTxs     *prometheus.CounterVec
 	incidents    *prometheus.CounterVec
 	lag          *prometheus.HistogramVec
 	connected    *prometheus.GaugeVec
@@ -41,15 +43,23 @@ func New() *Metrics {
 		reg: prometheus.NewRegistry(),
 		trades: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "tekel_trades_total",
-			Help: "Trades received, including duplicates.",
+			Help: "Exchange trades received, including duplicates. Chain blocks are counted in tekel_blocks_total.",
 		}, []string{"exchange", "symbol"}),
+		blocks: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tekel_blocks_total",
+			Help: "Chain blocks received, including duplicates.",
+		}, []string{"chain", "network"}),
+		blockTxs: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tekel_block_transactions_total",
+			Help: "Transactions in the chain blocks received (the block's txCount), including duplicate blocks.",
+		}, []string{"chain", "network"}),
 		incidents: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "tekel_incidents_total",
 			Help: "Data-quality incidents detected, by kind.",
 		}, []string{"exchange", "symbol", "kind"}),
 		lag: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "tekel_feed_lag_seconds",
-			Help:    "Received time minus exchange time of each trade (negative values clamp to 0).",
+			Help:    "Received time minus source time of each trade, or of each block for chains (negative values clamp to 0).",
 			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
 		}, []string{"exchange", "symbol"}),
 		connected: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -98,7 +108,7 @@ func New() *Metrics {
 	m.reg.MustRegister(
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
-		m.trades, m.incidents, m.lag, m.connected, m.decodeErrors, m.backpressure, m.lateTrades, m.sinkErrors, m.alerts,
+		m.trades, m.blocks, m.blockTxs, m.incidents, m.lag, m.connected, m.decodeErrors, m.backpressure, m.lateTrades, m.sinkErrors, m.alerts,
 		m.refFetches, m.refDeviation, m.refDistance, m.refCredits,
 	)
 	return m
@@ -116,6 +126,14 @@ func (m *Metrics) Registry() *prometheus.Registry { return m.reg }
 func (m *Metrics) TradeReceived(exchange, symbol string, lag time.Duration) {
 	m.trades.WithLabelValues(exchange, symbol).Inc()
 	m.lag.WithLabelValues(exchange, symbol).Observe(max(lag.Seconds(), 0))
+}
+
+// BlockReceived implements app.Metrics. The lag goes to the same histogram as
+// trades, labelled with the chain and network in the exchange and symbol labels.
+func (m *Metrics) BlockReceived(chain, network string, txs int, lag time.Duration) {
+	m.blocks.WithLabelValues(chain, network).Inc()
+	m.blockTxs.WithLabelValues(chain, network).Add(float64(max(txs, 0)))
+	m.lag.WithLabelValues(chain, network).Observe(max(lag.Seconds(), 0))
 }
 
 // IncidentRecorded implements app.Metrics.
