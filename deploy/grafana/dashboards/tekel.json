@@ -28,7 +28,7 @@
       },
       "options": {
         "mode": "html",
-        "content": "<div style=\"display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;width:100%;padding-top:4px\">\n<img src=\"https://raw.githubusercontent.com/Amadeus-22/tekel/main/docs/assets/logo.png\" alt=\"Tekel\" width=\"76\" height=\"76\" style=\"display:block;margin:0 auto;border-radius:16px\">\n<div style=\"font-size:34px;font-weight:700;line-height:1.1;letter-spacing:.5px\">Tekel</div>\n<div style=\"font-size:17px;opacity:.8\">Live market data quality, checked every second</div>\n<div style=\"font-size:15px;line-height:1.5;margin-top:4px\">\n<span style=\"display:inline-block;padding:7px 14px;border-radius:999px;border:1px solid rgba(127,127,127,.4);background:rgba(127,127,127,.10);margin:0 4px 8px 4px\"><b>Exchanges</b> · Binance, Kraken, Coinbase: every trade ID checked for gaps, duplicates and delays; prices compared with CoinMarketCap</span>\n<span style=\"display:inline-block;padding:7px 14px;border-radius:999px;border:1px solid rgba(127,127,127,.4);background:rgba(127,127,127,.10);margin:0 4px 8px 4px\"><b>KleverChain</b> · every block event checked for missed nonces</span>\n</div>\n<div style=\"font-size:14px;opacity:.75\">Click any tile or legend to filter the dashboard. Hover a chart for exact values.</div>\n<a href=\"https://github.com/Amadeus-22/tekel\" target=\"_blank\" style=\"font-size:15px;padding:7px 16px;border-radius:10px;border:1px solid rgba(127,127,127,.45);text-decoration:none\">Open source · GitHub →</a>\n</div>"
+        "content": "<div style=\"display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;width:100%;padding-top:4px\">\n<img src=\"https://raw.githubusercontent.com/Amadeus-22/tekel/main/docs/assets/logo.png\" alt=\"Tekel\" width=\"76\" height=\"76\" style=\"display:block;margin:0 auto;border-radius:16px\">\n<div style=\"font-size:34px;font-weight:700;line-height:1.1;letter-spacing:.5px\">Tekel</div>\n<div style=\"font-size:17px;opacity:.8\">Live market data quality, checked every second</div>\n<div style=\"font-size:15px;line-height:1.5;margin-top:4px\">\n<span style=\"display:inline-block;padding:7px 14px;border-radius:999px;border:1px solid rgba(127,127,127,.4);background:rgba(127,127,127,.10);margin:0 4px 8px 4px\"><b>Exchanges</b> · Binance, Kraken, Coinbase: every trade ID checked for gaps, duplicates and delays; prices compared with CoinMarketCap</span>\n<span style=\"display:inline-block;padding:7px 14px;border-radius:999px;border:1px solid rgba(127,127,127,.4);background:rgba(127,127,127,.10);margin:0 4px 8px 4px\"><b>KleverChain</b> · every block event checked for missed nonces</span>\n</div>\n<div style=\"font-size:14px;opacity:.75\">Click any tile, bar or line to filter the dashboard. Hover a chart for exact values.</div>\n<div style=\"display:flex;gap:10px;flex-wrap:wrap;justify-content:center\"><a href=\"https://github.com/Amadeus-22/tekel\" target=\"_blank\" style=\"font-size:15px;padding:7px 16px;border-radius:10px;border:1px solid rgba(127,127,127,.45);text-decoration:none\">Open source · GitHub →</a><a href=\"https://github.com/Amadeus-22/tekel#what-it-checks\" target=\"_blank\" style=\"font-size:15px;padding:7px 16px;border-radius:10px;border:1px solid rgba(127,127,127,.45);text-decoration:none;opacity:.85\">How the checks work</a><a href=\"https://github.com/Amadeus-22/tekel/tree/main/deploy/klever-node\" target=\"_blank\" style=\"font-size:15px;padding:7px 16px;border-radius:10px;border:1px solid rgba(127,127,127,.45);text-decoration:none;opacity:.85\">KleverChain node dashboard</a></div>\n</div>"
       },
       "transparent": true
     },
@@ -1291,7 +1291,8 @@
           ]
         },
         "refresh": 2,
-        "sort": 1
+        "sort": 1,
+        "hide": 2
       }
     ]
   },
@@ -1310,7 +1311,8 @@
         "titleFormat": "{{kind}}",
         "textFormat": "{{exchange}} {{symbol}}",
         "tagKeys": "exchange,kind",
-        "useValueForTime": false
+        "useValueForTime": false,
+        "hide": true
       },
       {
         "name": "Price deviation (CMC)",
@@ -1325,7 +1327,8 @@
         "titleFormat": "price_deviation",
         "textFormat": "{{exchange}} {{symbol}}",
         "tagKeys": "exchange",
-        "useValueForTime": false
+        "useValueForTime": false,
+        "hide": true
       },
       {
         "name": "Disconnects",
@@ -1340,31 +1343,10 @@
         "titleFormat": "disconnect",
         "textFormat": "{{exchange}} {{symbol}}",
         "tagKeys": "exchange",
-        "useValueForTime": false
+        "useValueForTime": false,
+        "hide": true
       }
     ]
   },
-  "links": [
-    {
-      "title": "GitHub",
-      "type": "link",
-      "url": "https://github.com/Amadeus-22/tekel",
-      "targetBlank": true,
-      "icon": "external link"
-    },
-    {
-      "title": "KleverChain node dashboard",
-      "type": "link",
-      "url": "https://github.com/Amadeus-22/tekel/tree/main/deploy/klever-node",
-      "targetBlank": true,
-      "icon": "external link"
-    },
-    {
-      "title": "How the checks work",
-      "type": "link",
-      "url": "https://github.com/Amadeus-22/tekel#what-it-checks",
-      "targetBlank": true,
-      "icon": "doc"
-    }
-  ]
+  "links": []
 }
