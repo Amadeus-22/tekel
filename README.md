@@ -132,6 +132,21 @@ The dashboard is the public face of Tekel: uptime per feed, incidents by kind an
 stream, and how far each stream is from CoinMarketCap's price, over the last 24
 hours by default.
 
+At the top is the **Trust Score**: one number from 0 to 100 per exchange over the
+last 24 hours, so feeds can be ranked at a glance.
+
+| Factor | Ratio from 0 to 1 |
+|---|---|
+| availability | share of time the connection was up |
+| freshness | share of trades received within 2.5s of the exchange's timestamp |
+| agreement | share of CoinMarketCap checks within 0.25% of the reference price (1 without an API key) |
+| integrity | 0.99 for each sequence gap, duplicate or out-of-order incident |
+
+`trust = 100 × availability × freshness × agreement × integrity`. Prometheus
+computes it from Tekel's own metrics with recording rules
+([deploy/prometheus/rules.yml](deploy/prometheus/rules.yml), tested in CI with
+`promtool test rules`); the series is `tekel:trust_score:24h{exchange}`.
+
 ![Tekel Grafana dashboard: uptime per feed, incidents by kind, deviation from CoinMarketCap by stream, connection state, trades and blocks per second, receive lag](docs/assets/grafana.png)
 
 ## Configuration

@@ -1,0 +1,51 @@
+# Trust Score: one number from 0 to 100 per exchange over the last 24 hours,
+# computed from metrics Tekel already exports. Each factor is a ratio from 0 to 1:
+#
+#   availability  share of time the connection was up (tekel_connected)
+#   freshness     share of trades received within 2.5s of the exchange's timestamp
+#   agreement     share of CoinMarketCap checks within 0.25% of the reference price
+#                 (1 when no CoinMarketCap key is set, so the score still works)
+#   integrity     0.99 per sequence gap, duplicate or out-of-order incident
+#
+#   trust = 100 × availability × freshness × agreement × integrity
+#
+# Only exchanges count (series that have trades); chain block feeds are scored
+# by the node alerts in deploy/klever-node, not here.
+# Rules in a group run in order at the same timestamp, so the last rule reads
+# the ones above it.
+groups:
+  - name: tekel_trust
+    interval: 1m
+    rules:
+      - record: tekel:availability:ratio_24h
+        expr: |
+          max by (exchange) (avg_over_time(tekel_connected[24h]))
+            and on (exchange) sum by (exchange) (tekel_trades_total)
+
+      - record: tekel:freshness:ratio_24h
+        expr: |
+          sum by (exchange) (increase(tekel_feed_lag_seconds_bucket{le="2.5"}[24h]))
+            / sum by (exchange) (increase(tekel_feed_lag_seconds_count[24h]))
+          and on (exchange) tekel:availability:ratio_24h
+
+      - record: tekel:agreement:ratio_24h
+        expr: |
+          sum by (exchange) (increase(tekel_reference_distance_ratio_bucket{le="0.0025"}[24h]))
+            / sum by (exchange) (increase(tekel_reference_distance_ratio_count[24h]))
+          and on (exchange) tekel:availability:ratio_24h
+
+      - record: tekel:sequence_incidents:24h
+        expr: |
+          (
+            sum by (exchange) (increase(tekel_incidents_total{kind=~"sequence_gap|duplicate|out_of_order"}[24h]))
+              and on (exchange) tekel:availability:ratio_24h
+          )
+          or on (exchange) 0 * tekel:availability:ratio_24h
+
+      - record: tekel:trust_score:24h
+        expr: |
+          100
+            * tekel:availability:ratio_24h
+            * on (exchange) tekel:freshness:ratio_24h
+            * on (exchange) (tekel:agreement:ratio_24h or on (exchange) 0 * tekel:availability:ratio_24h + 1)
+            * on (exchange) (0.99 ^ tekel:sequence_incidents:24h)

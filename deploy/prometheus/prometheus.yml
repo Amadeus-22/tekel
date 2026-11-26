@@ -4,6 +4,10 @@ global:
   scrape_interval: 10s
   evaluation_interval: 10s
 
+# Trust Score per exchange (tested with: promtool test rules rules_test.yml).
+rule_files:
+  - rules.yml
+
 scrape_configs:
   - job_name: tekel
     static_configs:

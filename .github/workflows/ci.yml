@@ -22,3 +22,17 @@ jobs:
         run: make test-integration
       - name: build
         run: make build
+
+  prometheus-rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: promtool check and test
+        run: |
+          for dir in deploy/prometheus deploy/klever-node; do
+            docker run --rm --entrypoint promtool -v "$PWD/$dir:/etc/prometheus" -w /etc/prometheus \
+              prom/prometheus:v3.5.0 check config prometheus.yml
+          done
+          docker run --rm --entrypoint promtool -v "$PWD/deploy/prometheus:/w" -w /w prom/prometheus:v3.5.0 test rules rules_test.yml
+          docker run --rm --entrypoint promtool -v "$PWD/deploy/klever-node:/w" -w /w prom/prometheus:v3.5.0 test rules alerts_test.yml
