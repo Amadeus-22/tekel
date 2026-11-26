@@ -5,7 +5,7 @@ that KleverChain network through its public node's WebSocket (`/subscribe`,
 `blocks`). The stream shows up as `klever:mainnet` (or `klever:testnet`) with `"kind": "blocks"`: `trades` counts
 blocks and `last_trade_id` is the last block nonce. A nonce jump while
 connected is a `sequence_gap` (the node drops events when its queues are
-full), a dropped connection a `disconnect`, no block for too long a
+full: the block is still on chain, only this subscription missed its event), a dropped connection a `disconnect`, no block for too long a
 `stale_stream`. Blocks have no price: no `price_spike`, no LEAN files.
 
 A block comes every 4 s, so a tighter stale threshold suits it:
