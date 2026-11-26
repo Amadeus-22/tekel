@@ -195,6 +195,12 @@ Errors are `{"error":{"code":"snake_case","message":"..."}}`. Metrics:
 `tekel_late_trades_total`, `tekel_sink_errors_total`, `tekel_alerts_total`, labelled by `exchange` and
 `symbol` where they apply (full list in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#metrics)).
 
+## KleverChain node dashboard
+
+Running a klever-go validator or observer? [`deploy/klever-node`](deploy/klever-node) has a
+Grafana dashboard and Prometheus alert rules built on the node's own `/node/metrics`, usable
+without Tekel.
+
 ## Footprint and privacy
 
 - Writes only `TEKEL_DATA_DIR` (`./data`) and `TEKEL_DB_PATH` (`./tekel.db`, plus

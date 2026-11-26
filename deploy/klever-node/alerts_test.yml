@@ -1,0 +1,90 @@
+# promtool test rules alerts_test.yml
+rule_files:
+  - alerts.yml
+evaluation_interval: 15s
+
+tests:
+  - name: healthy node fires nothing
+    interval: 15s
+    input_series:
+      - series: 'up{job="klever-node",node="v1"}'
+        values: '1x40'
+      - series: 'klv_nonce{node="v1"}'
+        values: '1000+4x40'
+      - series: 'klv_probable_highest_nonce{node="v1"}'
+        values: '1001+4x40'
+      - series: 'klv_num_connected_peers{node="v1"}'
+        values: '200x40'
+    alert_rule_test:
+      - {eval_time: 10m, alertname: KleverNodeStalled, exp_alerts: []}
+      - {eval_time: 10m, alertname: KleverNodeBehind, exp_alerts: []}
+      - {eval_time: 10m, alertname: KleverNodeFewPeers, exp_alerts: []}
+      - {eval_time: 10m, alertname: KleverNodeDown, exp_alerts: []}
+
+  - name: stuck nonce fires KleverNodeStalled
+    interval: 15s
+    input_series:
+      - series: 'klv_nonce{node="v1"}'
+        values: '1000x40'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: KleverNodeStalled
+        exp_alerts:
+          - exp_labels: {severity: critical, node: v1}
+            exp_annotations: {summary: "v1: no new block for 3 minutes (about 45 slots)"}
+
+  - name: node falling behind fires KleverNodeBehind
+    interval: 15s
+    input_series:
+      - series: 'klv_nonce{node="v1"}'
+        values: '1000+1x40'
+      - series: 'klv_probable_highest_nonce{node="v1"}'
+        values: '1100+4x40'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: KleverNodeBehind
+        exp_alerts:
+          - exp_labels: {severity: warning, node: v1}
+            exp_annotations: {summary: "v1: 172 blocks behind the network for 5 minutes"}
+
+  - name: unreachable node fires KleverNodeDown
+    interval: 15s
+    input_series:
+      - series: 'up{job="klever-node",node="v1"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: KleverNodeDown
+        exp_alerts:
+          - exp_labels: {severity: critical, job: klever-node, node: v1}
+            exp_annotations: {summary: "v1: /node/metrics unreachable for 2 minutes"}
+
+  - name: validator missing leader slots
+    interval: 1m
+    input_series:
+      # 20 leader slots in an hour, 15 accepted (75%)
+      - series: 'klv_count_leader{node="v1"}'
+        values: '0+0.333333x60'
+      - series: 'klv_count_accepted_blocks{node="v1"}'
+        values: '0+0.25x60'
+    alert_rule_test:
+      - eval_time: 60m
+        alertname: KleverValidatorMissedProposals
+        exp_alerts:
+          - exp_labels: {severity: warning, node: v1}
+            exp_annotations: {summary: "v1: under 90% of its leader slots produced an accepted block in the last hour"}
+
+  - name: observer (counters at 0) fires no validator alert
+    interval: 1m
+    input_series:
+      - series: 'klv_count_leader{node="o1"}'
+        values: '0x60'
+      - series: 'klv_count_accepted_blocks{node="o1"}'
+        values: '0x60'
+      - series: 'klv_count_consensus{node="o1"}'
+        values: '0x60'
+      - series: 'klv_count_consensus_accepted_blocks{node="o1"}'
+        values: '0x60'
+    alert_rule_test:
+      - {eval_time: 60m, alertname: KleverValidatorMissedProposals, exp_alerts: []}
+      - {eval_time: 60m, alertname: KleverValidatorLowConsensusParticipation, exp_alerts: []}
