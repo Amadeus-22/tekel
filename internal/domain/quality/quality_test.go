@@ -90,16 +90,16 @@ func TestObserveTradeChecks(t *testing.T) {
 			},
 		},
 		{
-			name: "late receipt is clock skew",
+			name: "late receipt is delayed",
 			trade: func() domain.Trade {
 				tr := trade(1, "100")
 				tr.ReceivedTime = tr.ExchangeTime.Add(3 * time.Second)
 				return tr
 			},
-			want: []domain.IncidentKind{domain.KindClockSkew},
+			want: []domain.IncidentKind{domain.KindDelayed},
 		},
 		{
-			name: "exchange clock ahead of ours is clock skew too",
+			name: "exchange clock ahead of ours is clock skew",
 			trade: func() domain.Trade {
 				tr := trade(1, "100")
 				tr.ReceivedTime = tr.ExchangeTime.Add(-3 * time.Second)
@@ -115,7 +115,7 @@ func TestObserveTradeChecks(t *testing.T) {
 				tr.ReceivedTime = tr.ExchangeTime.Add(time.Minute)
 				return tr
 			},
-			want: []domain.IncidentKind{domain.KindSequenceGap, domain.KindClockSkew},
+			want: []domain.IncidentKind{domain.KindSequenceGap, domain.KindDelayed},
 		},
 	}
 	for _, tt := range tests {
@@ -459,8 +459,8 @@ func TestBlockStream(t *testing.T) {
 
 	late := block(7)
 	late.ReceivedTime = late.ChainTime.Add(3 * time.Second)
-	if got := kinds(s.ObserveBlock(late).Incidents); len(got) != 1 || got[0] != domain.KindClockSkew {
-		t.Errorf("late block: %v, want clock_skew", got)
+	if got := kinds(s.ObserveBlock(late).Incidents); len(got) != 1 || got[0] != domain.KindDelayed {
+		t.Errorf("late block: %v, want delayed", got)
 	}
 
 	// Disconnected while blocks 8..9 were produced: a known gap, not a silent one.

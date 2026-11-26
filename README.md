@@ -94,7 +94,8 @@ Every stream, live, with each hit stored as an incident in SQLite:
 | `sequence_gap` | the trade ID or block nonce jumped while connected (silent gap) |
 | `duplicate` | the ID was already seen recently; the event is dropped |
 | `out_of_order` | exchange time went backwards beyond the tolerance |
-| `clock_skew` | \|received − exchange time\| exceeds the threshold |
+| `delayed` | received more than the threshold after the exchange or block time (late delivery) |
+| `clock_skew` | the exchange or block time is ahead of the receive time by more than the threshold |
 | `price_spike` | price is far from the rolling median (k × MAD rule); trades only |
 | `stale_stream` | a connected stream was silent for too long |
 | `disconnect` | the connection was down; records the known-gap window |
@@ -147,7 +148,7 @@ Durations use Go syntax (`500ms`, `30s`, `5m`).
 | `TEKEL_KLEVER_NETWORK` | off | `mainnet` or `testnet`; `TEKEL_KLEVER_URL` overrides the public node |
 | `TEKEL_STALE_AFTER` | `60s` | `stale_stream` threshold |
 | `TEKEL_STALE_AFTER_OVERRIDES` | none | per stream, e.g. `kraken:ETH/USD=3m,klever:testnet=20s`; an override that matches no enabled stream stops startup |
-| `TEKEL_CLOCK_SKEW` | `2s` | `clock_skew` threshold |
+| `TEKEL_CLOCK_SKEW` | `2s` | threshold for `delayed` and `clock_skew` |
 | `TEKEL_CLOCK_SKEW_OVERRIDES` | none | per stream, e.g. `klever:mainnet=4s` ([why](docs/klever.md#clock-skew)); same rules as the stale overrides |
 | `TEKEL_HTTP_ADDR` | `127.0.0.1:8080` | API and metrics address (the image sets `:8080`) |
 | `TEKEL_DATA_DIR` | `./data` | LEAN data folder |

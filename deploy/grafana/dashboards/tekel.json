@@ -116,7 +116,7 @@
       "id": 102,
       "type": "stat",
       "title": "Incidents in range",
-      "description": "Incidents in the selected range, by kind. sequence_gap: an ID jumped while connected. duplicate / out_of_order: same or older ID again. clock_skew: a trade or block arrived more than 2 s from its source timestamp (on Coinbase this is delivery delay). stale_stream: no data for too long. disconnect: the connection dropped. Click a tile to filter by kind.",
+      "description": "Incidents in the selected range, by kind. sequence_gap: an ID jumped while connected. duplicate / out_of_order: same or older ID again. delayed: a trade or block arrived more than 2 s after its source timestamp. clock_skew: a source timestamp ahead of our clock (before 0.13.0 late data was also labelled clock_skew). stale_stream: no data for too long. disconnect: the connection dropped. Click a tile to filter by kind.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"

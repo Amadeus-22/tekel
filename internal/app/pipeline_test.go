@@ -583,12 +583,12 @@ func TestPipelineAppliesClockSkewOverride(t *testing.T) {
 			runUntilEmitted(t, h, f)
 			n := 0
 			for _, k := range h.store.kinds() {
-				if k == domain.KindClockSkew {
+				if k == domain.KindDelayed {
 					n++
 				}
 			}
 			if n != tt.want {
-				t.Errorf("clock_skew incidents = %d, want %d (all: %v)", n, tt.want, h.store.kinds())
+				t.Errorf("delayed incidents = %d, want %d (all: %v)", n, tt.want, h.store.kinds())
 			}
 		})
 	}

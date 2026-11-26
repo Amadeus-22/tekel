@@ -17,9 +17,10 @@ A block's `timestamp` is the start of its round in whole seconds, and the node
 publishes the block once it is final, so blocks reach Tekel about 2 to 2.5 s
 after their timestamp. On mainnet, 8,116 blocks between 2026-11-21 and
 2026-11-24 crossed the default 2 s threshold; 92% of them by less than 0.5 s,
-none early. That is the chain's finality delay, not a wrong clock. Allow one
-block interval: `TEKEL_CLOCK_SKEW_OVERRIDES=klever:mainnet=4s`. A block later
-than that is still flagged.
+none early. That is the chain's finality delay, not a wrong clock: those blocks
+are `delayed`, and `clock_skew` is kept for a timestamp ahead of the receive time.
+Allow one block interval: `TEKEL_CLOCK_SKEW_OVERRIDES=klever:mainnet=4s`. A block
+later than that is still flagged as `delayed`.
 
 The public nodes are `wss://node.mainnet.klever.org/subscribe` and
 `wss://node.testnet.klever.org/subscribe`; set `TEKEL_KLEVER_URL` to use your
