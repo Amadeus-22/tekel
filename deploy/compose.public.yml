@@ -1,0 +1,39 @@
+# Public instance (https://tekel-io.duckdns.org) on a VPS shared with another
+# site. Only what differs from docker-compose.yml lives here: the released
+# image, port 8081, resource limits, log rotation, the domain and the shared
+# reverse-proxy network. Settings and secrets come from .env next to this file.
+#
+# Deploy: scripts/deploy-public.sh (copies deploy/ to the server and runs compose).
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
+name: tekel
+services:
+  tekel:
+    build: !reset null
+    image: ghcr.io/amadeus-22/tekel:${TEKEL_VERSION:?set TEKEL_VERSION in .env}
+    env_file: .env
+    ports: !override
+      - "127.0.0.1:8081:8080"
+    mem_limit: 128m
+    cpus: 0.5
+    logging: *logging
+
+  prometheus:
+    mem_limit: 192m
+    cpus: 0.3
+    logging: *logging
+
+  grafana:
+    environment:
+      GF_SERVER_ROOT_URL: ${GF_SERVER_ROOT_URL:?set GF_SERVER_ROOT_URL in .env}
+    networks: [default, ruah]
+    mem_limit: 400m
+    cpus: 0.5
+    logging: *logging
+
+networks:
+  ruah:
+    name: ruah_default
+    external: true
