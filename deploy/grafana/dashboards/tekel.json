@@ -24,11 +24,11 @@
         "x": 0,
         "y": 0,
         "w": 24,
-        "h": 3
+        "h": 4
       },
       "options": {
-        "mode": "markdown",
-        "content": "**Tekel** checks live trade and block streams from Binance, Kraken, Coinbase and KleverChain for lost, duplicated, late and stale data, and compares every price with CoinMarketCap. Red lines on the charts mark gaps and stale streams. Free and open source: [github.com/Amadeus-22/tekel](https://github.com/Amadeus-22/tekel)"
+        "mode": "html",
+        "content": "<div style=\"display:flex;align-items:center;gap:14px;flex-wrap:wrap\">\n<img src=\"https://raw.githubusercontent.com/Amadeus-22/tekel/main/docs/assets/logo.png\" alt=\"Tekel\" width=\"44\" height=\"44\" style=\"border-radius:10px\">\n<div style=\"flex:1;min-width:240px\">\n<div style=\"font-size:20px;font-weight:600;line-height:1.2\">Tekel <span style=\"font-size:14px;font-weight:400;opacity:.7\">· live market data quality, checked every second</span></div>\n<div style=\"margin-top:8px;font-size:13px;line-height:1.4\">\n<span style=\"display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid rgba(127,127,127,.35);background:rgba(127,127,127,.08);margin:0 6px 6px 0\"><b>Exchanges</b> · Binance, Kraken, Coinbase: every trade ID checked for gaps, duplicates and delays; prices compared with CoinMarketCap</span>\n<span style=\"display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid rgba(127,127,127,.35);background:rgba(127,127,127,.08);margin:0 6px 6px 0\"><b>KleverChain</b> · every block nonce checked for gaps</span>\n</div>\n</div>\n<a href=\"https://github.com/Amadeus-22/tekel\" target=\"_blank\" style=\"font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid rgba(127,127,127,.35);text-decoration:none;white-space:nowrap\">Open source · GitHub →</a>\n</div>"
       },
       "transparent": true
     },
@@ -43,7 +43,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 3,
+        "y": 4,
         "w": 6,
         "h": 5
       },
@@ -113,7 +113,7 @@
       },
       "gridPos": {
         "x": 6,
-        "y": 3,
+        "y": 4,
         "w": 8,
         "h": 5
       },
@@ -183,7 +183,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 3,
+        "y": 4,
         "w": 6,
         "h": 5
       },
@@ -253,7 +253,7 @@
       },
       "gridPos": {
         "x": 20,
-        "y": 3,
+        "y": 4,
         "w": 4,
         "h": 5
       },
@@ -326,7 +326,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 9,
         "w": 16,
         "h": 9
       },
@@ -405,7 +405,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 8,
+        "y": 9,
         "w": 8,
         "h": 9
       },
@@ -464,7 +464,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 16,
+        "y": 17,
         "w": 14,
         "h": 9
       },
@@ -541,7 +541,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 16,
+        "y": 17,
         "w": 10,
         "h": 9
       },
@@ -669,7 +669,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 23,
+        "y": 24,
         "w": 4,
         "h": 7
       },
@@ -752,7 +752,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 23,
+        "y": 24,
         "w": 7,
         "h": 7
       },
@@ -805,7 +805,7 @@
       },
       "gridPos": {
         "x": 11,
-        "y": 23,
+        "y": 24,
         "w": 6,
         "h": 7
       },
@@ -880,7 +880,7 @@
       },
       "gridPos": {
         "x": 17,
-        "y": 23,
+        "y": 24,
         "w": 7,
         "h": 7
       },
@@ -933,7 +933,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 30,
+        "y": 31,
         "w": 24,
         "h": 7
       },
@@ -993,7 +993,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 37,
+        "y": 38,
         "w": 8,
         "h": 5
       },
@@ -1046,7 +1046,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 37,
+        "y": 38,
         "w": 8,
         "h": 5
       },
@@ -1100,7 +1100,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 37,
+        "y": 38,
         "w": 8,
         "h": 5
       },
