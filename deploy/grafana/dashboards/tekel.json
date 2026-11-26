@@ -1112,18 +1112,18 @@
     },
     {
       "id": 111,
-      "type": "stat",
+      "type": "timeseries",
       "title": "Pipeline health",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Tekel's own health in the selected range. Each should stay at 0. Backpressure: seconds feeds waited because the pipeline was full. Sink errors: failed writes of incidents or bars. Decode errors: malformed messages skipped. Late trades: trades that arrived after their minute bar was written.",
+      "description": "Tekel's own health, per 5 minutes. Every line should stay at 0; the area turns red above 0. Backpressure: seconds feeds waited because the pipeline was full. Sink errors: failed writes. Decode errors: malformed messages skipped. Late trades: trades that arrived after their minute bar was written.",
       "gridPos": {
         "x": 0,
         "y": 44,
         "w": 24,
-        "h": 5
+        "h": 7
       },
       "targets": [
         {
@@ -1132,7 +1132,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(tekel_backpressure_seconds_total{exchange=~\"$exchange\"}[$__range])) or vector(0)",
+          "expr": "sum(increase(tekel_backpressure_seconds_total{exchange=~\"$exchange\"}[5m])) or vector(0)",
           "legendFormat": "Backpressure (s)"
         },
         {
@@ -1141,7 +1141,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(tekel_sink_errors_total[$__range])) or vector(0)",
+          "expr": "sum(increase(tekel_sink_errors_total[5m])) or vector(0)",
           "legendFormat": "Sink errors"
         },
         {
@@ -1150,7 +1150,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(tekel_decode_errors_total{exchange=~\"$exchange\"}[$__range])) or vector(0)",
+          "expr": "sum(increase(tekel_decode_errors_total{exchange=~\"$exchange\"}[5m])) or vector(0)",
           "legendFormat": "Decode errors"
         },
         {
@@ -1159,7 +1159,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(tekel_late_trades_total{exchange=~\"$exchange\"}[$__range])) or vector(0)",
+          "expr": "sum(increase(tekel_late_trades_total{exchange=~\"$exchange\"}[5m])) or vector(0)",
           "legendFormat": "Late trades"
         }
       ],
@@ -1167,8 +1167,10 @@
         "defaults": {
           "unit": "none",
           "decimals": 0,
+          "min": 0,
+          "softMax": 1,
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "thresholds": {
             "mode": "absolute",
@@ -1183,16 +1185,15 @@
               }
             ]
           },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "0 · healthy"
-                }
-              }
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "line+area"
             }
-          ],
+          },
           "links": [
             {
               "title": "What these numbers mean",
@@ -1204,18 +1205,19 @@
         "overrides": []
       },
       "options": {
-        "reduceOptions": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
           "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
+            "sum",
+            "max"
+          ]
         },
-        "colorMode": "background",
-        "graphMode": "none",
-        "textMode": "value_and_name",
-        "justifyMode": "center",
-        "orientation": "vertical"
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       }
     },
     {
@@ -1224,7 +1226,7 @@
       "title": "About the sources",
       "gridPos": {
         "x": 0,
-        "y": 49,
+        "y": 51,
         "w": 24,
         "h": 8
       },
