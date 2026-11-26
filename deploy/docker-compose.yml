@@ -64,9 +64,15 @@ services:
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
       GF_NEWS_NEWS_FEED_ENABLED: "false"
+      # Tekel sends its own alerts; Grafana alerting would only add an empty page.
+      GF_UNIFIED_ALERTING_ENABLED: "false"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      # Tekel logo as the browser tab icon and the Grafana menu logo.
+      - ./grafana/branding/fav32.png:/usr/share/grafana/public/img/fav32.png:ro
+      - ./grafana/branding/apple-touch-icon.png:/usr/share/grafana/public/img/apple-touch-icon.png:ro
+      - ./grafana/branding/grafana_icon.svg:/usr/share/grafana/public/img/grafana_icon.svg:ro
       - grafana-data:/var/lib/grafana
     depends_on: [prometheus]
 
