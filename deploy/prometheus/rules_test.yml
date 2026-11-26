@@ -1,0 +1,88 @@
+# promtool test rules rules_test.yml
+rule_files: [rules.yml]
+evaluation_interval: 1m
+
+tests:
+  # binance: always connected, 90% fresh trades, 80% CoinMarketCap agreement, no incidents.
+  # kraken: up half the day, all trades fresh, no CoinMarketCap data (agreement counts as 1).
+  # klever: a chain feed, no trades, so it gets no score.
+  - interval: 1m
+    input_series:
+      - series: 'tekel_connected{exchange="binance"}'
+        values: '1x1500'
+      - series: 'tekel_connected{exchange="kraken"}'
+        values: '0x780 1x720'
+      - series: 'tekel_connected{exchange="klever"}'
+        values: '1x1500'
+      - series: 'tekel_trades_total{exchange="binance",symbol="BTCUSDT"}'
+        values: '0+10x1500'
+      - series: 'tekel_trades_total{exchange="kraken",symbol="BTC/USD"}'
+        values: '0+10x1500'
+      - series: 'tekel_feed_lag_seconds_bucket{exchange="binance",symbol="BTCUSDT",le="2.5"}'
+        values: '0+9x1500'
+      - series: 'tekel_feed_lag_seconds_count{exchange="binance",symbol="BTCUSDT"}'
+        values: '0+10x1500'
+      - series: 'tekel_feed_lag_seconds_bucket{exchange="kraken",symbol="BTC/USD",le="2.5"}'
+        values: '0+10x1500'
+      - series: 'tekel_feed_lag_seconds_count{exchange="kraken",symbol="BTC/USD"}'
+        values: '0+10x1500'
+      - series: 'tekel_feed_lag_seconds_bucket{exchange="klever",symbol="mainnet",le="2.5"}'
+        values: '0+1x1500'
+      - series: 'tekel_feed_lag_seconds_count{exchange="klever",symbol="mainnet"}'
+        values: '0+1x1500'
+      - series: 'tekel_reference_distance_ratio_bucket{exchange="binance",symbol="BTCUSDT",le="0.0025"}'
+        values: '0+4x1500'
+      - series: 'tekel_reference_distance_ratio_count{exchange="binance",symbol="BTCUSDT"}'
+        values: '0+5x1500'
+    promql_expr_test:
+      - expr: tekel:availability:ratio_24h
+        eval_time: 25h
+        exp_samples:
+          - labels: 'tekel:availability:ratio_24h{exchange="binance"}'
+            value: 1
+          - labels: 'tekel:availability:ratio_24h{exchange="kraken"}'
+            value: 0.5
+      - expr: tekel:sequence_incidents:24h
+        eval_time: 25h
+        exp_samples:
+          - labels: 'tekel:sequence_incidents:24h{exchange="binance"}'
+            value: 0
+          - labels: 'tekel:sequence_incidents:24h{exchange="kraken"}'
+            value: 0
+      - expr: round(tekel:trust_score:24h, 0.01)
+        eval_time: 25h
+        exp_samples:
+          - labels: '{exchange="binance"}'
+            value: 72
+          - labels: '{exchange="kraken"}'
+            value: 50
+
+  # Each sequence incident costs 1%: two gaps and one duplicate on a perfect feed.
+  # Delayed trades are not counted again here; freshness already measures them.
+  - interval: 1h
+    input_series:
+      - series: 'tekel_connected{exchange="coinbase"}'
+        values: '1x25'
+      - series: 'tekel_trades_total{exchange="coinbase",symbol="BTC-USD"}'
+        values: '0+100x25'
+      - series: 'tekel_feed_lag_seconds_bucket{exchange="coinbase",symbol="BTC-USD",le="2.5"}'
+        values: '0+100x25'
+      - series: 'tekel_feed_lag_seconds_count{exchange="coinbase",symbol="BTC-USD"}'
+        values: '0+100x25'
+      - series: 'tekel_incidents_total{exchange="coinbase",symbol="BTC-USD",kind="sequence_gap"}'
+        values: '0x12 2x13'
+      - series: 'tekel_incidents_total{exchange="coinbase",symbol="BTC-USD",kind="duplicate"}'
+        values: '0x12 1x13'
+      - series: 'tekel_incidents_total{exchange="coinbase",symbol="BTC-USD",kind="delayed"}'
+        values: '0x12 50x13'
+    promql_expr_test:
+      - expr: round(tekel:sequence_incidents:24h)
+        eval_time: 25h
+        exp_samples:
+          - labels: '{exchange="coinbase"}'
+            value: 3
+      - expr: round(tekel:trust_score:24h, 0.01)
+        eval_time: 25h
+        exp_samples:
+          - labels: '{exchange="coinbase"}'
+            value: 97.03

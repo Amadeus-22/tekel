@@ -33,6 +33,93 @@
       "transparent": true
     },
     {
+      "id": 112,
+      "type": "bargauge",
+      "title": "Trust Score, last 24h (0–100)",
+      "description": "One number per exchange over the last 24 hours: 100 × availability (share of time connected) × freshness (share of trades received within 2.5s) × CoinMarketCap agreement (share of checks within 0.25%; counts as 1 without a CMC key) × 0.99 per sequence gap, duplicate or out-of-order incident. Computed by Prometheus recording rules in deploy/prometheus/rules.yml. Fixed 24h window, independent of the time picker.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sort_desc(tekel:trust_score:24h{exchange=~\"$exchange\"})",
+          "legendFormat": "{{exchange}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1,
+          "min": 0,
+          "max": 100,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 90
+              },
+              {
+                "color": "green",
+                "value": 97
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Show only ${__field.labels.exchange}",
+              "url": "/d/${__dashboard.uid}?var-exchange=${__field.labels.exchange}&${__url_time_range}"
+            },
+            {
+              "title": "Reset filters",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "namePlacement": "top",
+        "sizing": "auto",
+        "text": {
+          "titleSize": 14,
+          "valueSize": 18
+        },
+        "valueMode": "color"
+      }
+    },
+    {
       "id": 101,
       "type": "stat",
       "title": "Uptime in range",
@@ -43,7 +130,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 10,
+        "y": 16,
         "w": 6,
         "h": 5
       },
@@ -123,7 +210,7 @@
       },
       "gridPos": {
         "x": 6,
-        "y": 10,
+        "y": 16,
         "w": 8,
         "h": 5
       },
@@ -203,7 +290,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 10,
+        "y": 16,
         "w": 6,
         "h": 5
       },
@@ -283,7 +370,7 @@
       },
       "gridPos": {
         "x": 20,
-        "y": 10,
+        "y": 16,
         "w": 4,
         "h": 5
       },
@@ -356,7 +443,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 15,
+        "y": 21,
         "w": 16,
         "h": 9
       },
@@ -449,7 +536,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 15,
+        "y": 21,
         "w": 8,
         "h": 9
       },
@@ -522,7 +609,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 23,
+        "y": 29,
         "w": 14,
         "h": 9
       },
@@ -609,7 +696,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 23,
+        "y": 29,
         "w": 10,
         "h": 9
       },
@@ -737,7 +824,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 30,
+        "y": 36,
         "w": 4,
         "h": 7
       },
@@ -830,7 +917,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 30,
+        "y": 36,
         "w": 7,
         "h": 7
       },
@@ -897,7 +984,7 @@
       },
       "gridPos": {
         "x": 11,
-        "y": 30,
+        "y": 36,
         "w": 6,
         "h": 7
       },
@@ -976,7 +1063,7 @@
       },
       "gridPos": {
         "x": 17,
-        "y": 30,
+        "y": 36,
         "w": 7,
         "h": 7
       },
@@ -1043,7 +1130,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 37,
+        "y": 43,
         "w": 24,
         "h": 7
       },
@@ -1121,7 +1208,7 @@
       "description": "Tekel's own health, per 5 minutes. Every line should stay at 0; the area turns red above 0. Backpressure: seconds feeds waited because the pipeline was full. Sink errors: failed writes. Decode errors: malformed messages skipped. Late trades: trades that arrived after their minute bar was written.",
       "gridPos": {
         "x": 0,
-        "y": 44,
+        "y": 50,
         "w": 24,
         "h": 7
       },
@@ -1226,7 +1313,7 @@
       "title": "About the sources",
       "gridPos": {
         "x": 0,
-        "y": 51,
+        "y": 57,
         "w": 24,
         "h": 8
       },
