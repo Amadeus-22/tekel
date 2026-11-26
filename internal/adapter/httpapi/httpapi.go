@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Amadeus-22/tekel/internal/app"
@@ -194,7 +195,7 @@ func parseFilter(r *http.Request) (app.IncidentFilter, error) {
 	if k := q.Get("kind"); k != "" {
 		kind, err := domain.ParseIncidentKind(k)
 		if err != nil {
-			return f, errors.New("kind must be one of sequence_gap, duplicate, out_of_order, clock_skew, price_spike, stale_stream, disconnect")
+			return f, errors.New("kind must be one of " + kindList())
 		}
 		f.Kind = kind
 	}
@@ -227,4 +228,13 @@ func writeError(w http.ResponseWriter, status int, code, msg string) {
 		Message string `json:"message"`
 	}
 	writeJSON(w, status, map[string]body{"error": {Code: code, Message: msg}})
+}
+
+// kindList is every incident kind, comma separated, for error messages.
+func kindList() string {
+	names := make([]string, len(domain.IncidentKinds))
+	for i, k := range domain.IncidentKinds {
+		names[i] = string(k)
+	}
+	return strings.Join(names, ", ")
 }

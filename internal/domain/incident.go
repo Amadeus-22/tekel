@@ -15,6 +15,11 @@ const (
 	KindSequenceGap IncidentKind = "sequence_gap"
 	KindDuplicate   IncidentKind = "duplicate"
 	KindOutOfOrder  IncidentKind = "out_of_order"
+	// KindDelayed is data received more than the threshold after its source
+	// timestamp: the exchange or node delivered it late.
+	KindDelayed IncidentKind = "delayed"
+	// KindClockSkew is a source timestamp ahead of the receive time by more
+	// than the threshold: the source clock runs ahead of ours.
 	KindClockSkew   IncidentKind = "clock_skew"
 	KindPriceSpike  IncidentKind = "price_spike"
 	KindStaleStream IncidentKind = "stale_stream"
@@ -27,7 +32,7 @@ const (
 
 // IncidentKinds lists every kind, in documentation order.
 var IncidentKinds = []IncidentKind{
-	KindSequenceGap, KindDuplicate, KindOutOfOrder, KindClockSkew,
+	KindSequenceGap, KindDuplicate, KindOutOfOrder, KindDelayed, KindClockSkew,
 	KindPriceSpike, KindStaleStream, KindDisconnect, KindPriceDeviation,
 }
 

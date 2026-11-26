@@ -31,7 +31,8 @@ operational event; the second is a data-quality defect.
   | `sequence_gap` | TradeID jumped while the connection was up (silent gap) |
   | `duplicate` | TradeID already seen in the recent window |
   | `out_of_order` | ExchangeTime earlier than the previous trade by more than tolerance |
-  | `clock_skew` | abs(ReceivedTime − ExchangeTime) above threshold |
+  | `delayed` | ReceivedTime − ExchangeTime above threshold (late delivery) |
+  | `clock_skew` | ExchangeTime − ReceivedTime above threshold (source clock ahead) |
   | `price_spike` | price deviates from the rolling median by more than max(k × 1.4826 × MAD, min_deviation × median) |
   | `stale_stream` | no trade for longer than the per-symbol threshold |
   | `disconnect` | connection lost; records the known-gap window |

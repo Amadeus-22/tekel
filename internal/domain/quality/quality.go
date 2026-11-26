@@ -203,9 +203,14 @@ func (s *Stream) observe(id int64, exchTime, received time.Time) Verdict {
 				w.time, exchTime.Format(time.RFC3339Nano), behind, w.unit)))
 		}
 	}
-	if skew := received.Sub(exchTime); skew.Abs() > s.cfg.ClockSkew {
+	// One threshold, two meanings: late delivery, or a source clock ahead of ours.
+	switch skew := received.Sub(exchTime); {
+	case skew > s.cfg.ClockSkew:
+		out = append(out, s.incident(domain.KindDelayed, id, received, fmt.Sprintf(
+			"received %s after the %s (threshold %s)", skew, w.time, s.cfg.ClockSkew)))
+	case -skew > s.cfg.ClockSkew:
 		out = append(out, s.incident(domain.KindClockSkew, id, received, fmt.Sprintf(
-			"received - %s = %s exceeds %s", w.time, skew, s.cfg.ClockSkew)))
+			"%s is %s ahead of the receive time (threshold %s)", w.time, -skew, s.cfg.ClockSkew)))
 	}
 
 	if !s.haveLast || id > s.lastID {
