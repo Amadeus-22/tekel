@@ -24,11 +24,11 @@
         "x": 0,
         "y": 0,
         "w": 24,
-        "h": 4
+        "h": 10
       },
       "options": {
         "mode": "html",
-        "content": "<div style=\"display:flex;align-items:center;gap:14px;flex-wrap:wrap\">\n<img src=\"https://raw.githubusercontent.com/Amadeus-22/tekel/main/docs/assets/logo.png\" alt=\"Tekel\" width=\"44\" height=\"44\" style=\"border-radius:10px\">\n<div style=\"flex:1;min-width:240px\">\n<div style=\"font-size:20px;font-weight:600;line-height:1.2\">Tekel <span style=\"font-size:14px;font-weight:400;opacity:.7\">· live market data quality, checked every second</span></div>\n<div style=\"margin-top:8px;font-size:13px;line-height:1.4\">\n<span style=\"display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid rgba(127,127,127,.35);background:rgba(127,127,127,.08);margin:0 6px 6px 0\"><b>Exchanges</b> · Binance, Kraken, Coinbase: every trade ID checked for gaps, duplicates and delays; prices compared with CoinMarketCap</span>\n<span style=\"display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid rgba(127,127,127,.35);background:rgba(127,127,127,.08);margin:0 6px 6px 0\"><b>KleverChain</b> · every block nonce checked for gaps</span>\n</div>\n</div>\n<a href=\"https://github.com/Amadeus-22/tekel\" target=\"_blank\" style=\"font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid rgba(127,127,127,.35);text-decoration:none;white-space:nowrap\">Open source · GitHub →</a>\n</div>"
+        "content": "<div style=\"display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;width:100%;padding-top:4px\">\n<img src=\"https://raw.githubusercontent.com/Amadeus-22/tekel/main/docs/assets/logo.png\" alt=\"Tekel\" width=\"76\" height=\"76\" style=\"display:block;margin:0 auto;border-radius:16px\">\n<div style=\"font-size:34px;font-weight:700;line-height:1.1;letter-spacing:.5px\">Tekel</div>\n<div style=\"font-size:17px;opacity:.8\">Live market data quality, checked every second</div>\n<div style=\"font-size:15px;line-height:1.5;margin-top:4px\">\n<span style=\"display:inline-block;padding:7px 14px;border-radius:999px;border:1px solid rgba(127,127,127,.4);background:rgba(127,127,127,.10);margin:0 4px 8px 4px\"><b>Exchanges</b> · Binance, Kraken, Coinbase: every trade ID checked for gaps, duplicates and delays; prices compared with CoinMarketCap</span>\n<span style=\"display:inline-block;padding:7px 14px;border-radius:999px;border:1px solid rgba(127,127,127,.4);background:rgba(127,127,127,.10);margin:0 4px 8px 4px\"><b>KleverChain</b> · every block event checked for missed nonces</span>\n</div>\n<div style=\"font-size:14px;opacity:.75\">Click any tile or legend to filter the dashboard. Hover a chart for exact values.</div>\n<a href=\"https://github.com/Amadeus-22/tekel\" target=\"_blank\" style=\"font-size:15px;padding:7px 16px;border-radius:10px;border:1px solid rgba(127,127,127,.45);text-decoration:none\">Open source · GitHub →</a>\n</div>"
       },
       "transparent": true
     },
@@ -36,14 +36,14 @@
       "id": 101,
       "type": "stat",
       "title": "Uptime in range",
-      "description": "Share of the selected time range each feed was connected and subscribed (avg of tekel_connected).",
+      "description": "Share of the selected time range each source was connected. The line inside each tile shows connection over time. Click a tile to filter the dashboard to that source.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
         "x": 0,
-        "y": 4,
+        "y": 10,
         "w": 6,
         "h": 5
       },
@@ -54,7 +54,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "avg by (exchange) (avg_over_time(tekel_connected[$__range]))",
+          "expr": "avg by (exchange) (avg_over_time(tekel_connected{exchange=~\"$exchange\"}[$__rate_interval]))",
           "legendFormat": "{{exchange}}",
           "instant": true,
           "range": false
@@ -83,20 +83,30 @@
                 "value": 0.999
               }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "Show only ${__field.labels.exchange}",
+              "url": "/d/${__dashboard.uid}?var-exchange=${__field.labels.exchange}&${__url_time_range}"
+            },
+            {
+              "title": "Reset filters",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}"
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "mean"
           ],
           "fields": "",
           "values": false
         },
         "colorMode": "background",
-        "graphMode": "none",
+        "graphMode": "area",
         "textMode": "value_and_name",
         "justifyMode": "auto",
         "orientation": "auto"
@@ -106,14 +116,14 @@
       "id": 102,
       "type": "stat",
       "title": "Incidents in range",
-      "description": "Data-quality incidents detected in the selected range, by kind, all streams. Every incident: GET /v1/incidents.",
+      "description": "Incidents in the selected range, by kind. sequence_gap: an ID jumped while connected. duplicate / out_of_order: same or older ID again. clock_skew: a trade or block arrived more than 2 s from its source timestamp (on Coinbase this is delivery delay). stale_stream: no data for too long. disconnect: the connection dropped. Click a tile to filter by kind.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
         "x": 6,
-        "y": 4,
+        "y": 10,
         "w": 8,
         "h": 5
       },
@@ -124,7 +134,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (kind) (increase(tekel_incidents_total[$__range]))",
+          "expr": "sum by (kind) (increase(tekel_incidents_total{exchange=~\"$exchange\",kind=~\"$kind\"}[$__range]))",
           "legendFormat": "{{kind}}",
           "instant": true,
           "range": false
@@ -153,7 +163,17 @@
                 "value": 100
               }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "Show only ${__field.labels.kind} incidents",
+              "url": "/d/${__dashboard.uid}?var-kind=${__field.labels.kind}&${__url_time_range}"
+            },
+            {
+              "title": "Reset filters",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}"
+            }
+          ]
         },
         "overrides": []
       },
@@ -166,7 +186,7 @@
           "values": false
         },
         "colorMode": "background",
-        "graphMode": "none",
+        "graphMode": "area",
         "textMode": "value_and_name",
         "justifyMode": "auto",
         "orientation": "auto"
@@ -176,14 +196,14 @@
       "id": 103,
       "type": "stat",
       "title": "Worst CMC deviation",
-      "description": "Largest distance in the range between a stream's last trade and CoinMarketCap's price for the asset (tekel_reference_deviation_ratio). price_deviation fires at 1%.",
+      "description": "Largest distance between a source's last trade and CoinMarketCap in the range. Click a tile to filter to that source.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
         "x": 14,
-        "y": 4,
+        "y": 10,
         "w": 6,
         "h": 5
       },
@@ -194,7 +214,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (exchange) (max_over_time(abs(tekel_reference_deviation_ratio)[$__range:]))",
+          "expr": "max by (exchange) (max_over_time(abs(tekel_reference_deviation_ratio{exchange=~\"$exchange\"})[$__range:]))",
           "legendFormat": "{{exchange}}",
           "instant": true,
           "range": false
@@ -223,7 +243,17 @@
                 "value": 0.01
               }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "Show only ${__field.labels.exchange}",
+              "url": "/d/${__dashboard.uid}?var-exchange=${__field.labels.exchange}&${__url_time_range}"
+            },
+            {
+              "title": "Reset filters",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}"
+            }
+          ]
         },
         "overrides": []
       },
@@ -236,7 +266,7 @@
           "values": false
         },
         "colorMode": "background",
-        "graphMode": "none",
+        "graphMode": "area",
         "textMode": "value_and_name",
         "justifyMode": "auto",
         "orientation": "auto"
@@ -253,7 +283,7 @@
       },
       "gridPos": {
         "x": 20,
-        "y": 4,
+        "y": 10,
         "w": 4,
         "h": 5
       },
@@ -326,7 +356,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 9,
+        "y": 15,
         "w": 16,
         "h": 9
       },
@@ -337,7 +367,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "tekel_reference_deviation_ratio",
+          "expr": "tekel_reference_deviation_ratio{exchange=~\"$exchange\"}",
           "legendFormat": "{{exchange}} {{symbol}}"
         }
       ],
@@ -378,15 +408,29 @@
                 "value": 0.01
               }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "Show only ${__field.labels.exchange}",
+              "url": "/d/${__dashboard.uid}?var-exchange=${__field.labels.exchange}&${__url_time_range}"
+            },
+            {
+              "title": "Reset filters",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}"
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -405,7 +449,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 9,
+        "y": 15,
         "w": 8,
         "h": 9
       },
@@ -416,7 +460,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sort_desc(sum by (exchange, symbol, kind) (increase(tekel_incidents_total[$__range])) > 0)",
+          "expr": "sort_desc(sum by (exchange, symbol, kind) (increase(tekel_incidents_total{exchange=~\"$exchange\",kind=~\"$kind\"}[$__range])) > 0)",
           "legendFormat": "{{exchange}} {{symbol}} {{kind}}",
           "instant": true,
           "range": false
@@ -429,7 +473,21 @@
           "min": 0,
           "color": {
             "mode": "continuous-YlRd"
-          }
+          },
+          "links": [
+            {
+              "title": "Show only ${__field.labels.exchange}",
+              "url": "/d/${__dashboard.uid}?var-exchange=${__field.labels.exchange}&${__url_time_range}"
+            },
+            {
+              "title": "Show only ${__field.labels.kind} incidents",
+              "url": "/d/${__dashboard.uid}?var-kind=${__field.labels.kind}&${__url_time_range}"
+            },
+            {
+              "title": "Reset filters",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}"
+            }
+          ]
         },
         "overrides": []
       },
@@ -464,7 +522,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 17,
+        "y": 23,
         "w": 14,
         "h": 9
       },
@@ -475,7 +533,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sort_desc(sum by (exchange, symbol) (increase(tekel_reference_distance_ratio_bucket{le=\"0.001\"}[$__range])) / sum by (exchange, symbol) (increase(tekel_reference_distance_ratio_count[$__range])))",
+          "expr": "sort_desc(sum by (exchange, symbol) (increase(tekel_reference_distance_ratio_bucket{exchange=~\"$exchange\",le=\"0.001\"}[$__range])) / sum by (exchange, symbol) (increase(tekel_reference_distance_ratio_count{exchange=~\"$exchange\"}[$__range])))",
           "legendFormat": "{{exchange}} {{symbol}}",
           "instant": true,
           "range": false
@@ -506,7 +564,17 @@
                 "value": 0.98
               }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "Show only ${__field.labels.exchange}",
+              "url": "/d/${__dashboard.uid}?var-exchange=${__field.labels.exchange}&${__url_time_range}"
+            },
+            {
+              "title": "Reset filters",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}"
+            }
+          ]
         },
         "overrides": []
       },
@@ -541,7 +609,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 17,
+        "y": 23,
         "w": 10,
         "h": 9
       },
@@ -552,7 +620,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (exchange) (increase(tekel_reference_distance_ratio_bucket{le=\"0.001\"}[$__range])) / sum by (exchange) (increase(tekel_reference_distance_ratio_count[$__range]))",
+          "expr": "sum by (exchange) (increase(tekel_reference_distance_ratio_bucket{exchange=~\"$exchange\",le=\"0.001\"}[$__range])) / sum by (exchange) (increase(tekel_reference_distance_ratio_count{exchange=~\"$exchange\"}[$__range]))",
           "legendFormat": "{{exchange}}",
           "instant": true,
           "range": false,
@@ -564,7 +632,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (exchange) (increase(tekel_reference_distance_ratio_bucket{le=\"0.0025\"}[$__range])) / sum by (exchange) (increase(tekel_reference_distance_ratio_count[$__range]))",
+          "expr": "sum by (exchange) (increase(tekel_reference_distance_ratio_bucket{exchange=~\"$exchange\",le=\"0.0025\"}[$__range])) / sum by (exchange) (increase(tekel_reference_distance_ratio_count{exchange=~\"$exchange\"}[$__range]))",
           "legendFormat": "{{exchange}}",
           "instant": true,
           "range": false,
@@ -576,7 +644,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (exchange) (increase(tekel_reference_distance_ratio_bucket{le=\"0.005\"}[$__range])) / sum by (exchange) (increase(tekel_reference_distance_ratio_count[$__range]))",
+          "expr": "sum by (exchange) (increase(tekel_reference_distance_ratio_bucket{exchange=~\"$exchange\",le=\"0.005\"}[$__range])) / sum by (exchange) (increase(tekel_reference_distance_ratio_count{exchange=~\"$exchange\"}[$__range]))",
           "legendFormat": "{{exchange}}",
           "instant": true,
           "range": false,
@@ -669,7 +737,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 24,
+        "y": 30,
         "w": 4,
         "h": 7
       },
@@ -680,7 +748,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (exchange) (tekel_connected)",
+          "expr": "max by (exchange) (tekel_connected{exchange=~\"$exchange\"})",
           "legendFormat": "{{exchange}}"
         }
       ],
@@ -718,7 +786,17 @@
           },
           "color": {
             "mode": "thresholds"
-          }
+          },
+          "links": [
+            {
+              "title": "Show only ${__field.labels.exchange}",
+              "url": "/d/${__dashboard.uid}?var-exchange=${__field.labels.exchange}&${__url_time_range}"
+            },
+            {
+              "title": "Reset filters",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}"
+            }
+          ]
         },
         "overrides": []
       },
@@ -752,7 +830,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 24,
+        "y": 30,
         "w": 7,
         "h": 7
       },
@@ -763,7 +841,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (exchange, symbol) (rate(tekel_trades_total[1m]))",
+          "expr": "sum by (exchange, symbol) (rate(tekel_trades_total{exchange=~\"$exchange\"}[1m]))",
           "legendFormat": "{{exchange}} {{symbol}}"
         }
       ],
@@ -778,15 +856,29 @@
           },
           "color": {
             "mode": "palette-classic"
-          }
+          },
+          "links": [
+            {
+              "title": "Show only ${__field.labels.exchange}",
+              "url": "/d/${__dashboard.uid}?var-exchange=${__field.labels.exchange}&${__url_time_range}"
+            },
+            {
+              "title": "Reset filters",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}"
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -805,7 +897,7 @@
       },
       "gridPos": {
         "x": 11,
-        "y": 24,
+        "y": 30,
         "w": 6,
         "h": 7
       },
@@ -816,7 +908,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (chain, network) (rate(tekel_blocks_total[1m]))",
+          "expr": "sum by (chain, network) (rate(tekel_blocks_total{chain=~\"$exchange\"}[1m]))",
           "legendFormat": "blocks/s {{chain}} {{network}}"
         },
         {
@@ -825,7 +917,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (chain, network) (rate(tekel_block_transactions_total[1m]))",
+          "expr": "sum by (chain, network) (rate(tekel_block_transactions_total{chain=~\"$exchange\"}[1m]))",
           "legendFormat": "txs/s {{chain}} {{network}}"
         }
       ],
@@ -859,9 +951,13 @@
       },
       "options": {
         "legend": {
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -880,7 +976,7 @@
       },
       "gridPos": {
         "x": 17,
-        "y": 24,
+        "y": 30,
         "w": 7,
         "h": 7
       },
@@ -891,7 +987,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum by (exchange, symbol, le) (rate(tekel_feed_lag_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.99, sum by (exchange, symbol, le) (rate(tekel_feed_lag_seconds_bucket{exchange=~\"$exchange\"}[5m])))",
           "legendFormat": "{{exchange}} {{symbol}}"
         }
       ],
@@ -906,15 +1002,29 @@
           },
           "color": {
             "mode": "palette-classic"
-          }
+          },
+          "links": [
+            {
+              "title": "Show only ${__field.labels.exchange}",
+              "url": "/d/${__dashboard.uid}?var-exchange=${__field.labels.exchange}&${__url_time_range}"
+            },
+            {
+              "title": "Reset filters",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}"
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -933,7 +1043,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 31,
+        "y": 37,
         "w": 24,
         "h": 7
       },
@@ -944,7 +1054,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "clamp_min(sum by (exchange, symbol, kind) (tekel_incidents_total) - sum by (exchange, symbol, kind) (tekel_incidents_total offset 5m), 0) or sum by (exchange, symbol, kind) (tekel_incidents_total unless tekel_incidents_total offset 5m)",
+          "expr": "clamp_min(sum by (exchange, symbol, kind) (tekel_incidents_total{exchange=~\"$exchange\",kind=~\"$kind\"}) - sum by (exchange, symbol, kind) (tekel_incidents_total{exchange=~\"$exchange\",kind=~\"$kind\"} offset 5m), 0) or sum by (exchange, symbol, kind) (tekel_incidents_total{exchange=~\"$exchange\",kind=~\"$kind\"} unless tekel_incidents_total{exchange=~\"$exchange\",kind=~\"$kind\"} offset 5m)",
           "legendFormat": "{{exchange}} {{symbol}} {{kind}}"
         }
       ],
@@ -966,15 +1076,33 @@
           "color": {
             "mode": "palette-classic"
           },
-          "min": 0
+          "min": 0,
+          "links": [
+            {
+              "title": "Show only ${__field.labels.exchange}",
+              "url": "/d/${__dashboard.uid}?var-exchange=${__field.labels.exchange}&${__url_time_range}"
+            },
+            {
+              "title": "Show only ${__field.labels.kind} incidents",
+              "url": "/d/${__dashboard.uid}?var-kind=${__field.labels.kind}&${__url_time_range}"
+            },
+            {
+              "title": "Reset filters",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}"
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -983,18 +1111,18 @@
       }
     },
     {
-      "id": 6,
-      "type": "timeseries",
-      "title": "Backpressure (s blocked / s)",
-      "description": "Time feeds spent blocked because the pipeline buffer was full (ADR 0003). 0 means the validator keeps up.",
+      "id": 111,
+      "type": "stat",
+      "title": "Pipeline health",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Tekel's own health in the selected range. Each should stay at 0. Backpressure: seconds feeds waited because the pipeline was full. Sink errors: failed writes of incidents or bars. Decode errors: malformed messages skipped. Late trades: trades that arrived after their minute bar was written.",
       "gridPos": {
         "x": 0,
-        "y": 38,
-        "w": 8,
+        "y": 44,
+        "w": 24,
         "h": 5
       },
       "targets": [
@@ -1004,115 +1132,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (exchange) (rate(tekel_backpressure_seconds_total[1m])) or label_replace(vector(0), \"exchange\", \"all\", \"\", \"\")",
-          "legendFormat": "{{exchange}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 0,
-            "showPoints": "never",
-            "spanNulls": true
-          },
-          "color": {
-            "mode": "palette-classic"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      }
-    },
-    {
-      "id": 7,
-      "type": "timeseries",
-      "title": "Sink errors per 5 minutes",
-      "description": "Failed writes to the incident store or the LEAN bar files (tekel_sink_errors_total).",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 8,
-        "y": 38,
-        "w": 8,
-        "h": 5
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum by (sink) (increase(tekel_sink_errors_total[5m])) or label_replace(vector(0), \"sink\", \"all\", \"\", \"\")",
-          "legendFormat": "{{sink}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 0,
-            "showPoints": "never",
-            "spanNulls": true
-          },
-          "decimals": 0,
-          "color": {
-            "mode": "palette-classic"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      }
-    },
-    {
-      "id": 8,
-      "type": "timeseries",
-      "title": "Decode errors and late trades",
-      "description": "Malformed messages skipped (tekel_decode_errors_total) and trades too late for their bar (tekel_late_trades_total).",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 16,
-        "y": 38,
-        "w": 8,
-        "h": 5
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum by (exchange) (increase(tekel_decode_errors_total[5m])) or label_replace(vector(0), \"exchange\", \"all\", \"\", \"\")",
-          "legendFormat": "decode {{exchange}}"
+          "expr": "sum(increase(tekel_backpressure_seconds_total{exchange=~\"$exchange\"}[$__range])) or vector(0)",
+          "legendFormat": "Backpressure (s)"
         },
         {
           "refId": "B",
@@ -1120,41 +1141,157 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (exchange) (increase(tekel_late_trades_total[5m])) or label_replace(vector(0), \"exchange\", \"all\", \"\", \"\")",
-          "legendFormat": "late {{exchange}}"
+          "expr": "sum(increase(tekel_sink_errors_total[$__range])) or vector(0)",
+          "legendFormat": "Sink errors"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(tekel_decode_errors_total{exchange=~\"$exchange\"}[$__range])) or vector(0)",
+          "legendFormat": "Decode errors"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(tekel_late_trades_total{exchange=~\"$exchange\"}[$__range])) or vector(0)",
+          "legendFormat": "Late trades"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 0,
-            "showPoints": "never",
-            "spanNulls": true
-          },
+          "unit": "none",
           "decimals": 0,
           "color": {
-            "mode": "palette-classic"
-          }
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "0 · healthy"
+                }
+              }
+            }
+          ],
+          "links": [
+            {
+              "title": "What these numbers mean",
+              "url": "https://github.com/Amadeus-22/tekel#http-api-and-metrics",
+              "targetBlank": true
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "vertical"
       }
+    },
+    {
+      "id": 110,
+      "type": "text",
+      "title": "About the sources",
+      "gridPos": {
+        "x": 0,
+        "y": 49,
+        "w": 24,
+        "h": 8
+      },
+      "options": {
+        "mode": "html",
+        "content": "<div style=\"display:flex;gap:12px;flex-wrap:wrap\"><div style=\"flex:1 1 230px;padding:14px 16px;border-radius:12px;border:1px solid rgba(127,127,127,.35);background:rgba(127,127,127,.07);text-align:left;border-top:3px solid #F0B90B\"><div style=\"font-size:18px;font-weight:700;margin-bottom:6px\">Binance</div><div style=\"font-size:14px;line-height:1.5;opacity:.9\">Founded in 2017. The largest crypto exchange by spot trading volume, with millions of trades a day across thousands of pairs.</div><div style=\"font-size:13px;margin-top:10px;opacity:.75\"><b>Tekel reads:</b> public trade stream <code>&lt;pair&gt;@trade</code>, sequential trade ID <code>t</code></div></div><div style=\"flex:1 1 230px;padding:14px 16px;border-radius:12px;border:1px solid rgba(127,127,127,.35);background:rgba(127,127,127,.07);text-align:left;border-top:3px solid #7B61FF\"><div style=\"font-size:18px;font-weight:700;margin-bottom:6px\">Kraken</div><div style=\"font-size:14px;line-height:1.5;opacity:.9\">Founded in 2011 in San Francisco, one of the oldest crypto exchanges still operating. Known for spot, futures and its WebSocket v2 API.</div><div style=\"font-size:13px;margin-top:10px;opacity:.75\"><b>Tekel reads:</b> WebSocket v2 <code>trade</code> channel, <code>trade_id</code> per book</div></div><div style=\"flex:1 1 230px;padding:14px 16px;border-radius:12px;border:1px solid rgba(127,127,127,.35);background:rgba(127,127,127,.07);text-align:left;border-top:3px solid #0052FF\"><div style=\"font-size:18px;font-weight:700;margin-bottom:6px\">Coinbase</div><div style=\"font-size:14px;line-height:1.5;opacity:.9\">Founded in 2012 in San Francisco. Listed on Nasdaq (COIN) since 2021, the largest US-based crypto exchange.</div><div style=\"font-size:13px;margin-top:10px;opacity:.75\"><b>Tekel reads:</b> Exchange feed <code>matches</code> channel, <code>trade_id</code>, plus the 1 s <code>heartbeat</code></div></div><div style=\"flex:1 1 230px;padding:14px 16px;border-radius:12px;border:1px solid rgba(127,127,127,.35);background:rgba(127,127,127,.07);text-align:left;border-top:3px solid #AA33B5\"><div style=\"font-size:18px;font-weight:700;margin-bottom:6px\">KleverChain</div><div style=\"font-size:14px;line-height:1.5;opacity:.9\">Klever's layer-1 blockchain, built for fast and low-cost payments and tokens. Mainnet since July 1, 2022, with a new block every 4 seconds.</div><div style=\"font-size:13px;margin-top:10px;opacity:.75\"><b>Tekel reads:</b> the node's <code>/subscribe</code> WebSocket, <code>blocks</code>, block <code>nonce</code> and <code>txCount</code></div></div></div>"
+      },
+      "transparent": false
     }
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "name": "exchange",
+        "label": "Source",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(tekel_connected, exchange)",
+          "refId": "v1"
+        },
+        "definition": "label_values(tekel_connected, exchange)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "refresh": 2,
+        "sort": 1
+      },
+      {
+        "name": "kind",
+        "label": "Incident kind",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(tekel_incidents_total, kind)",
+          "refId": "v2"
+        },
+        "definition": "label_values(tekel_incidents_total, kind)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "refresh": 2,
+        "sort": 1
+      }
+    ]
   },
   "annotations": {
     "list": [
@@ -1204,5 +1341,28 @@
         "useValueForTime": false
       }
     ]
-  }
+  },
+  "links": [
+    {
+      "title": "GitHub",
+      "type": "link",
+      "url": "https://github.com/Amadeus-22/tekel",
+      "targetBlank": true,
+      "icon": "external link"
+    },
+    {
+      "title": "KleverChain node dashboard",
+      "type": "link",
+      "url": "https://github.com/Amadeus-22/tekel/tree/main/deploy/klever-node",
+      "targetBlank": true,
+      "icon": "external link"
+    },
+    {
+      "title": "How the checks work",
+      "type": "link",
+      "url": "https://github.com/Amadeus-22/tekel#what-it-checks",
+      "targetBlank": true,
+      "icon": "doc"
+    }
+  ]
 }
