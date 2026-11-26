@@ -4,7 +4,7 @@
 
 <h1 align="center">Tekel</h1>
 
-<p align="center">Tekel finds the trades and blocks your market data silently lost.</p>
+<p align="center">Tekel finds the trades your exchange feeds silently drop, and the block events your node subscription misses.</p>
 
 <p align="center"><b><a href="https://tekel-io.duckdns.org">Live dashboard</a></b>: Binance, Kraken, Coinbase and KleverChain, checked against CoinMarketCap, running now.</p>
 
