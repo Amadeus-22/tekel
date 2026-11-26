@@ -1,0 +1,70 @@
+# Alert rules for KleverChain nodes, from the metrics klever-go serves on
+# /node/metrics. Blocks are produced every 4 s (klv_slot_duration 4000 ms).
+groups:
+  - name: klever-node
+    rules:
+      - alert: KleverNodeDown
+        expr: up{job="klever-node"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $labels.node }}: /node/metrics unreachable for 2 minutes"
+
+      - alert: KleverNodeStalled
+        expr: changes(klv_nonce[2m]) == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $labels.node }}: no new block for 3 minutes (about 45 slots)"
+
+      - alert: KleverNodeBehind
+        expr: klv_probable_highest_nonce - klv_nonce > 15
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.node }}: {{ $value }} blocks behind the network for 5 minutes"
+
+      - alert: KleverNodeSyncing
+        expr: klv_is_syncing == 1
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.node }}: still syncing after 10 minutes"
+
+      - alert: KleverNodeFewPeers
+        expr: klv_num_connected_peers < 10
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.node }}: only {{ $value }} connected peers"
+
+      - alert: KleverNodeDiskAlmostFull
+        expr: klv_disk_usage_percent > 85
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.node }}: disk {{ $value }}% used"
+
+      - alert: KleverNodeClockOffset
+        expr: abs(klv_clock_offset_ns) > 500e6
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.node }}: clock off by more than 500 ms from NTP"
+
+      # Validators only: these counters stay at 0 on observers.
+      - alert: KleverValidatorMissedProposals
+        expr: |
+          increase(klv_count_leader[1h]) > 0
+          and increase(klv_count_accepted_blocks[1h]) / increase(klv_count_leader[1h]) < 0.9
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.node }}: under 90% of its leader slots produced an accepted block in the last hour"
+
+      - alert: KleverValidatorLowConsensusParticipation
+        expr: |
+          increase(klv_count_consensus[1h]) > 0
+          and increase(klv_count_consensus_accepted_blocks[1h]) / increase(klv_count_consensus[1h]) < 0.9
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.node }}: under 90% of its consensus slots ended in an accepted block in the last hour"
