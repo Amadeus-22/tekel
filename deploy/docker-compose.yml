@@ -12,10 +12,10 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
     environment:
-      TEKEL_LOG_LEVEL: info
-      TEKEL_BINANCE_SYMBOLS: BTCUSDT,ETHUSDT
-      TEKEL_KRAKEN_SYMBOLS: BTC/USD,ETH/USD
-      TEKEL_COINBASE_SYMBOLS: BTC-USD,ETH-USD
+      TEKEL_LOG_LEVEL: ${TEKEL_LOG_LEVEL:-info}
+      TEKEL_BINANCE_SYMBOLS: ${TEKEL_BINANCE_SYMBOLS:-BTCUSDT,ETHUSDT}
+      TEKEL_KRAKEN_SYMBOLS: ${TEKEL_KRAKEN_SYMBOLS:-BTC/USD,ETH/USD}
+      TEKEL_COINBASE_SYMBOLS: ${TEKEL_COINBASE_SYMBOLS:-BTC-USD,ETH-USD}
       # Off unless set in the shell, e.g. TEKEL_MERCADOBITCOIN_SYMBOLS=BTC-BRL
       # (LEAN needs a custom market, ADR 0006) or TEKEL_KLEVER_NETWORK=testnet.
       TEKEL_MERCADOBITCOIN_SYMBOLS: ${TEKEL_MERCADOBITCOIN_SYMBOLS:-}
@@ -41,7 +41,8 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
-      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-15d}
+      - --storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-0}
     ports:
       - "127.0.0.1:9090:9090"
     volumes:
@@ -58,6 +59,7 @@ services:
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_ALLOW_SIGN_UP: "false"
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/tekel.json
       GF_ANALYTICS_REPORTING_ENABLED: "false"
